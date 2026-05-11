@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Coach CRM</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#f5f4f0;--surface:#fff;--surface2:#f0ede8;
+  --border:rgba(0,0,0,0.09);--border2:rgba(0,0,0,0.16);
+  --text:#1a1a18;--text2:#6b6a64;--text3:#9c9b95;
+  --red-bg:#fcebeb;--red-text:#8b1f1f;
+  --amber-bg:#fdf3e0;--amber-text:#7a4a00;
+  --green-bg:#eaf3de;--green-text:#2e5c0a;
+  --purple-bg:#eeedfe;--purple-text:#4a3faa;
+  --blue-bg:#e6f1fb;--blue-text:#185fa5;
+  --sidebar-w:220px;--radius:10px;--radius-sm:6px;
+  --accent:#1a1a18;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#151513;--surface:#1e1e1b;--surface2:#252521;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --text:#eeecea;--text2:#9c9b94;--text3:#6b6a64;
+  --red-bg:#3a1010;--red-text:#f09595;
+  --amber-bg:#2e1f06;--amber-text:#f0a832;
+  --green-bg:#142208;--green-text:#97c459;
+  --purple-bg:#1e1a40;--purple-text:#afa9ec;
+  --blue-bg:#0c2a47;--blue-text:#85b7eb;
+  --accent:#eeecea;
+}}
+body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh;}
+.shell{display:flex;min-height:100vh;}
+.sidebar{width:var(--sidebar-w);flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:50;transition:transform 0.22s ease;}
+.sidebar-header{padding:1.25rem 1rem 0.75rem;border-bottom:1px solid var(--border);}
+.sidebar-logo{font-size:15px;font-weight:700;letter-spacing:-0.3px;}
+.sidebar-sub{font-size:11px;color:var(--text3);margin-top:2px;}
+.sidebar-sync{display:flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;color:var(--text3);}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:var(--text3);}
+.sync-ok{background:var(--green-text);}.sync-err{background:var(--red-text);}
+.sidebar-nav{flex:1;padding:0.5rem;overflow-y:auto;}
+.nav-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text3);padding:0.75rem 0.6rem 0.3rem;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;transition:all 0.12s;border:none;background:none;width:100%;text-align:left;}
+.nav-item:hover{background:var(--surface2);color:var(--text);}
+.nav-item.active{background:var(--surface2);color:var(--text);}
+.nav-icon{font-size:15px;width:18px;text-align:center;flex-shrink:0;}
+.nav-badge{margin-left:auto;font-size:10px;font-weight:600;background:var(--red-bg);color:var(--red-text);padding:1px 6px;border-radius:20px;}
+.nav-badge.amber{background:var(--amber-bg);color:var(--amber-text);}
+.nav-badge.blue{background:var(--blue-bg);color:var(--blue-text);}
+.nav-soon{margin-left:auto;font-size:9px;font-weight:600;background:var(--surface2);color:var(--text3);padding:1px 6px;border-radius:20px;border:1px solid var(--border);}
+.sidebar-footer{padding:0.75rem 0.5rem;border-top:1px solid var(--border);}
+.setup-trigger{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--radius-sm);font-size:12px;color:var(--text3);cursor:pointer;background:none;border:none;width:100%;text-align:left;}
+.setup-trigger:hover{background:var(--surface2);color:var(--text2);}
+.sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:40;}
+.menu-toggle{display:none;position:fixed;top:12px;left:12px;z-index:60;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 9px;cursor:pointer;font-size:18px;line-height:1;}
+@media(max-width:700px){.sidebar{transform:translateX(-100%);}.sidebar.open{transform:translateX(0);}.sidebar-backdrop.open{display:block;}.menu-toggle{display:block;}.main{margin-left:0!important;}}
+.main{margin-left:var(--sidebar-w);flex:1;min-width:0;}
+.page{display:none;padding:2rem 2rem 4rem;max-width:1000px;}
+.page.active{display:block;}
+.page-title{font-size:20px;font-weight:600;letter-spacing:-0.3px;margin-bottom:4px;}
+.page-sub{font-size:13px;color:var(--text2);margin-bottom:1.75rem;}
+.setup-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center;padding:1rem;}
+.setup-overlay.open{display:flex;}
+.setup-box{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);padding:1.5rem;width:100%;max-width:500px;}
+.setup-box h3{font-size:16px;font-weight:600;margin-bottom:0.5rem;}
+.setup-box p{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:0.5rem;}
+.setup-box code{display:block;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 12px;font-size:11px;font-family:'SF Mono',monospace;word-break:break-all;margin:0.75rem 0;line-height:1.6;}
+.setup-inputs{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+.setup-inputs input{font-size:12px;font-family:'SF Mono',monospace;padding:7px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text);width:100%;}
+.setup-row{display:flex;gap:8px;margin-top:10px;}
+.btn-primary{padding:7px 18px;font-size:13px;font-weight:500;background:var(--accent);color:var(--bg);border:none;border-radius:var(--radius-sm);cursor:pointer;}
+.btn-secondary{padding:7px 14px;font-size:13px;background:none;border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text2);cursor:pointer;}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1.5rem;}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.75rem 1rem;}
+.stat-label{font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;}
+.stat-val{font-size:26px;font-weight:600;color:var(--text);}
+.stat-val.red{color:var(--red-text);}.stat-val.amber{color:var(--amber-text);}.stat-val.green{color:var(--green-text);}.stat-val.purple{color:var(--purple-text);}
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:1.5rem;}
+@media(max-width:640px){.dash-grid{grid-template-columns:1fr;}}
+.dash-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;}
+.dash-card-title{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text2);margin-bottom:1rem;}
+.dash-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;gap:8px;}
+.dash-row:last-child{border-bottom:none;}
+.dash-row-name{font-weight:500;}
+.dash-row-meta{font-size:12px;color:var(--text2);}
+.dash-empty{font-size:13px;color:var(--text3);padding:0.5rem 0;}
+.sales-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:1.5rem;}
+.sales-stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;}
+.sales-stat-label{font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;}
+.sales-stat-val{font-size:32px;font-weight:700;color:var(--text);line-height:1;}
+.sales-stat-sub{font-size:12px;color:var(--text3);margin-top:4px;}
+.sales-layout{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media(max-width:640px){.sales-layout{grid-template-columns:1fr;}}
+.sales-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;}
+.sales-card h3{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text2);margin-bottom:1rem;}
+.conv-ring-wrap{display:flex;align-items:center;gap:1.5rem;}
+.conv-ring{position:relative;width:90px;height:90px;flex-shrink:0;}
+.conv-ring svg{transform:rotate(-90deg);}
+.conv-ring-label{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.conv-ring-pct{font-size:18px;font-weight:700;color:var(--text);}
+.conv-ring-sub{font-size:10px;color:var(--text3);}
+.conv-detail{font-size:13px;color:var(--text2);line-height:2.2;}
+.log-form{display:flex;flex-direction:column;gap:10px;}
+.log-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.log-input{font-size:13px;padding:7px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text);width:100%;font-family:inherit;}
+.log-input:focus{outline:none;border-color:var(--accent);}
+.log-list{display:flex;flex-direction:column;}
+.log-item{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;gap:8px;}
+.log-item:last-child{border-bottom:none;}
+.log-item-date{font-size:12px;color:var(--text3);min-width:80px;}
+.log-item-closes{color:var(--green-text);font-weight:600;}
+.log-item-rate{font-size:11px;background:var(--green-bg);color:var(--green-text);padding:2px 7px;border-radius:20px;}
+.log-item-rate.low{background:var(--red-bg);color:var(--red-text);}
+.log-item-rate.mid{background:var(--amber-bg);color:var(--amber-text);}
+.log-del{background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:2px 4px;}
+.log-del:hover{color:var(--red-text);}
+.gs-banner{background:var(--blue-bg);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:0.75rem 1rem;font-size:12px;color:var(--blue-text);line-height:1.6;margin-bottom:1.25rem;}
+.toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+.filters{display:flex;gap:6px;flex-wrap:wrap;}
+.filter-btn{font-size:12px;font-weight:500;padding:4px 12px;border:1px solid var(--border);border-radius:20px;background:var(--surface);color:var(--text2);cursor:pointer;}
+.filter-btn:hover{border-color:var(--border2);color:var(--text);}
+.filter-btn.active{background:var(--accent);color:var(--bg);border-color:var(--accent);}
+.add-btn{font-size:13px;font-weight:500;padding:6px 14px;background:var(--accent);color:var(--bg);border:none;border-radius:var(--radius-sm);cursor:pointer;}
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+table{width:100%;border-collapse:collapse;}
+thead th{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text2);padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--surface2);cursor:pointer;user-select:none;white-space:nowrap;}
+thead th:hover{color:var(--text);}
+.sort-icon{font-size:10px;margin-left:3px;opacity:0.6;}
+tbody tr{border-bottom:1px solid var(--border);transition:background 0.1s;cursor:pointer;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:var(--surface2);}
+td{padding:10px 14px;vertical-align:middle;}
+.churned-row{opacity:0.5;}
+.avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;}
+.name-wrap{display:flex;align-items:center;gap:9px;}
+.athlete-name{font-weight:500;}
+.sub-text{font-size:11px;color:var(--text3);margin-top:1px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pill{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;white-space:nowrap;}
+.pill-red{background:var(--red-bg);color:var(--red-text);}
+.pill-amber{background:var(--amber-bg);color:var(--amber-text);}
+.pill-green{background:var(--green-bg);color:var(--green-text);}
+.pill-gray{background:var(--surface2);color:var(--text2);border:1px solid var(--border);}
+.meet-chip{display:inline-flex;align-items:center;gap:4px;background:var(--purple-bg);color:var(--purple-text);font-size:11px;font-weight:500;padding:3px 8px;border-radius:20px;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.meet-countdown{font-size:12px;color:var(--text2);margin-top:3px;}
+.no-meet{font-size:12px;color:var(--text3);}
+.date-input{font-size:13px;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);cursor:pointer;max-width:138px;}
+.action-btn{background:none;border:none;cursor:pointer;color:var(--text3);font-size:15px;padding:4px;border-radius:4px;display:flex;align-items:center;transition:color 0.15s;}
+.action-btn:hover{color:var(--red-text);}
+.add-row td{background:var(--surface2);padding:10px 14px;}
+.add-row input[type=text],.add-row input[type=date]{font-size:13px;padding:5px 9px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);width:100%;}
+.save-btn{font-size:12px;font-weight:500;padding:5px 14px;background:var(--accent);color:var(--bg);border:none;border-radius:var(--radius-sm);cursor:pointer;white-space:nowrap;}
+.cancel-btn{font-size:12px;padding:5px 10px;background:none;border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text2);cursor:pointer;white-space:nowrap;}
+.meet-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;}
+.meet-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;}
+.meet-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;}
+.meet-card-name{font-weight:600;font-size:15px;}
+.meet-card-date{font-size:12px;color:var(--text2);margin-top:2px;}
+.meet-card-cd{font-size:24px;font-weight:600;color:var(--purple-text);line-height:1;}
+.meet-card-unit{font-size:11px;color:var(--text2);margin-top:2px;text-align:right;}
+.meet-athletes{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.meet-ath-chip{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2);background:var(--surface2);padding:3px 9px;border-radius:20px;}
+.mini-avatar{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:600;flex-shrink:0;}
+.churn-layout{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:1.5rem;}
+@media(max-width:640px){.churn-layout{grid-template-columns:1fr;}}
+.churn-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;}
+.churn-card h3{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:1rem;}
+.churn-rate-big{font-size:48px;font-weight:700;line-height:1;}
+.churn-rate-big.bad{color:var(--red-text);}.churn-rate-big.ok{color:var(--amber-text);}.churn-rate-big.good{color:var(--green-text);}
+.churn-sublabel{font-size:12px;color:var(--text2);margin-top:6px;}
+.churn-formula{font-size:11px;color:var(--text3);margin-top:4px;font-style:italic;}
+.reason-bars{display:flex;flex-direction:column;gap:8px;}
+.reason-row{display:flex;align-items:center;gap:8px;}
+.reason-label{font-size:12px;color:var(--text2);min-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.reason-bar-wrap{flex:1;background:var(--surface2);border-radius:4px;height:8px;overflow:hidden;}
+.reason-bar{height:8px;border-radius:4px;background:var(--red-text);}
+.reason-count{font-size:12px;color:var(--text3);min-width:20px;text-align:right;}
+.churn-timeline{display:flex;flex-direction:column;}
+.timeline-row{display:flex;align-items:center;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid var(--border);gap:12px;}
+.timeline-row:last-child{border-bottom:none;}
+.tl-name{font-weight:500;}
+.tl-meta{font-size:12px;color:var(--text2);}
+.tl-reason{font-size:11px;background:var(--red-bg);color:var(--red-text);padding:2px 7px;border-radius:20px;white-space:nowrap;}
+/* My meets page */
+.mymeets-layout{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media(max-width:640px){.mymeets-layout{grid-template-columns:1fr;}}
+.mymeets-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;}
+.mymeets-card h3{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text2);margin-bottom:1rem;}
+.mm-list{display:flex;flex-direction:column;}
+.mm-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+.mm-item:last-child{border-bottom:none;}
+.mm-item-left{flex:1;min-width:0;}
+.mm-item-name{font-weight:500;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mm-item-meta{font-size:12px;color:var(--text2);margin-top:2px;}
+.mm-item-city{font-size:11px;display:inline-flex;align-items:center;gap:3px;background:var(--blue-bg);color:var(--blue-text);padding:2px 7px;border-radius:20px;margin-top:3px;}
+.mm-item-city.local{background:var(--green-bg);color:var(--green-text);}
+.mm-cd{font-size:13px;font-weight:600;color:var(--purple-text);white-space:nowrap;text-align:right;}
+.mm-handled{font-size:11px;font-weight:600;background:var(--green-bg);color:var(--green-text);padding:3px 9px;border-radius:20px;white-space:nowrap;}
+.mm-add-form{background:var(--surface2);border-radius:var(--radius-sm);padding:1rem;display:none;flex-direction:column;gap:10px;margin-top:10px;}
+.mm-add-form input,.mm-add-form select{font-size:13px;padding:7px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);width:100%;font-family:inherit;}
+.mm-add-form input:focus,.mm-add-form select:focus{outline:none;border-color:var(--accent);}
+.mm-form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.mm-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.5rem;}
+.coming-soon{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:3rem 2rem;text-align:center;max-width:520px;margin:0 auto;}
+.coming-soon-icon{font-size:36px;margin-bottom:1rem;}
+.coming-soon h2{font-size:17px;font-weight:600;margin-bottom:0.5rem;}
+.coming-soon p{font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:1.25rem;}
+.coming-soon-steps{text-align:left;background:var(--surface2);border-radius:var(--radius-sm);padding:1rem 1.25rem;font-size:13px;color:var(--text2);line-height:2;}
+.coming-soon-steps strong{color:var(--text);font-weight:500;}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:100;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);padding:1.5rem;width:100%;max-width:540px;margin:auto;}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;}
+.modal-header h3{font-size:17px;font-weight:600;}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);padding:2px 6px;}
+.modal-section{margin-bottom:1.25rem;}
+.modal-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text2);margin-bottom:6px;}
+.modal-input{font-size:13px;padding:7px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text);width:100%;font-family:inherit;}
+.modal-input:focus{outline:none;border-color:var(--accent);}
+textarea.modal-input{min-height:70px;resize:vertical;}
+.modal-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:1.25rem;}
+.modal-divider{border:none;border-top:1px solid var(--border);margin:1.25rem 0;}
+.churn-toggle-btn{font-size:12px;padding:5px 12px;border:1px solid var(--red-text);border-radius:var(--radius-sm);background:none;color:var(--red-text);cursor:pointer;font-weight:500;}
+.churn-toggle-btn.undo{border-color:var(--green-text);color:var(--green-text);}
+.churn-section{background:var(--red-bg);border-radius:var(--radius-sm);padding:1rem;margin-top:10px;}
+.churn-section .modal-label{color:var(--red-text);}
+.meets-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px;}
+.meet-item{display:flex;align-items:center;gap:8px;background:var(--surface2);border-radius:var(--radius-sm);padding:8px 10px;}
+.meet-item-left{flex:1;min-width:0;}
+.meet-item-name{font-weight:500;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.meet-item-meta{font-size:11px;color:var(--text2);margin-top:2px;}
+.meet-item-cd{font-size:12px;font-weight:600;color:var(--purple-text);white-space:nowrap;}
+.add-meet-form{background:var(--surface2);border-radius:var(--radius-sm);padding:10px;display:none;flex-direction:column;gap:8px;margin-bottom:8px;}
+.add-meet-form input{font-size:13px;padding:5px 8px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);width:100%;font-family:inherit;}
+.add-meet-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.empty{text-align:center;padding:3rem 1rem;color:var(--text3);font-size:13px;}
+.loading{text-align:center;padding:2rem;color:var(--text3);font-size:13px;}
+@media(max-width:640px){thead th:nth-child(2),td:nth-child(2),thead th:nth-child(3),td:nth-child(3){display:none;}}
+</style>
+</head>
+<body>
+<button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+<div class="sidebar-backdrop" id="backdrop" onclick="toggleSidebar()"></div>
+<div class="shell">
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">Coach CRM</div>
+    <div class="sidebar-sub" id="date-short"></div>
+    <div class="sidebar-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-label">Not connected</span></div>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-label">Overview</div>
+    <button class="nav-item active" onclick="goTo('dashboard',this)"><span class="nav-icon">⚡</span>Dashboard</button>
+    <div class="nav-label">Coaching</div>
+    <button class="nav-item" onclick="goTo('athletes',this)"><span class="nav-icon">🏋️</span>Athletes<span class="nav-badge amber" id="badge-due" style="display:none"></span></button>
+    <button class="nav-item" onclick="goTo('meets',this)"><span class="nav-icon">🗓️</span>Meets<span class="nav-badge blue" id="badge-meets" style="display:none"></span></button>
+    <button class="nav-item" onclick="goTo('mymeets',this)"><span class="nav-icon">🗓️</span>Meets I'm handling<span class="nav-badge blue" id="badge-mymeets" style="display:none"></span></button>
+    <div class="nav-label">Business</div>
+    <button class="nav-item" onclick="goTo('sales',this)"><span class="nav-icon">📊</span>Sales</button>
+    <button class="nav-item" onclick="goTo('churn',this)"><span class="nav-icon">📉</span>Churn<span class="nav-badge" id="badge-churn" style="display:none"></span></button>
+    <div class="nav-label">Other</div>
+    <button class="nav-item" onclick="goTo('calendar',this)"><span class="nav-icon">📅</span>Calendar<span class="nav-soon">Soon</span></button>
+  </div>
+  <div class="sidebar-footer">
+    <button class="setup-trigger" onclick="openSetup()"><span style="font-size:14px">⚙️</span>Database setup</button>
+  </div>
+</nav>
+<main class="main">
+  <!-- Dashboard -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-title">Dashboard</div>
+    <div class="page-sub" id="dash-greeting"></div>
+    <div class="stats" id="dash-stats"></div>
+    <div class="dash-grid">
+      <div class="dash-card"><div class="dash-card-title">⚠️ Needs attention</div><div id="dash-overdue"></div></div>
+      <div class="dash-card"><div class="dash-card-title">🏆 Upcoming meets</div><div id="dash-meets"></div></div>
+      <div class="dash-card"><div class="dash-card-title">📅 Due this week</div><div id="dash-due"></div></div>
+      <div class="dash-card"><div class="dash-card-title">📊 Sales this month</div><div id="dash-sales"></div></div>
+    </div>
+  </div>
+  <!-- Athletes -->
+  <div class="page" id="page-athletes">
+    <div class="page-title">Athletes</div>
+    <div class="page-sub">Click any athlete to view and edit details.</div>
+    <div class="toolbar">
+      <div class="filters">
+        <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+        <button class="filter-btn" onclick="setFilter('active',this)">Active</button>
+        <button class="filter-btn" onclick="setFilter('overdue',this)">Overdue</button>
+        <button class="filter-btn" onclick="setFilter('due',this)">Due this week</button>
+        <button class="filter-btn" onclick="setFilter('meet',this)">Has meet</button>
+        <button class="filter-btn" onclick="setFilter('churned',this)">Churned</button>
+      </div>
+      <button class="add-btn" onclick="toggleAdd()">+ Add athlete</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th onclick="sortBy('name')">Athlete <span class="sort-icon" id="sort-name"></span></th>
+          <th onclick="sortBy('program')">Program <span class="sort-icon" id="sort-program"></span></th>
+          <th onclick="sortBy('start_date')">Started <span class="sort-icon" id="sort-start_date"></span></th>
+          <th onclick="sortBy('meet')">Next meet <span class="sort-icon" id="sort-meet"></span></th>
+          <th onclick="sortBy('status')">Status <span class="sort-icon" id="sort-status"></span></th>
+          <th></th>
+        </tr></thead>
+        <tbody id="athlete-body"><tr><td colspan="6" class="loading">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <!-- Meets -->
+  <div class="page" id="page-meets">
+    <div class="page-title">Meets</div>
+    <div class="page-sub">All upcoming competitions across your roster.</div>
+    <div id="meet-grid-wrap"></div>
+  </div>
+  <!-- My Meets -->
+  <div class="page" id="page-mymeets">
+    <div class="page-title">Meets I'm handling at</div>
+    <div class="page-sub">Meets you're handling at — upcoming and past. Data will sync to Supabase once in Claude Code.</div>
+    <div class="mm-stats" id="mm-stats"></div>
+    <div class="mymeets-layout">
+      <div class="mymeets-card">
+        <h3>Upcoming</h3>
+        <div class="mm-list" id="mm-upcoming"></div>
+        <div class="mm-add-form" id="mm-add-form">
+          <div><div style="font-size:11px;color:var(--text2);margin-bottom:4px">Meet name</div><input type="text" id="mm-name" placeholder="e.g. USAPL Texas State Championships"/></div>
+          <div class="mm-form-row">
+            <div><div style="font-size:11px;color:var(--text2);margin-bottom:4px">Date</div><input type="date" id="mm-date"/></div>
+            <div><div style="font-size:11px;color:var(--text2);margin-bottom:4px">Time (optional)</div><input type="time" id="mm-time"/></div>
+          </div>
+          <div class="mm-form-row">
+            <div><div style="font-size:11px;color:var(--text2);margin-bottom:4px">City</div><input type="text" id="mm-city" placeholder="e.g. Austin, TX"/></div>
+            <div><div style="font-size:11px;color:var(--text2);margin-bottom:4px">Your home city</div><input type="text" id="mm-home" placeholder="e.g. Houston, TX"/></div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="save-btn" onclick="addMyMeet()">Add meet</button>
+            <button class="cancel-btn" onclick="toggleMMForm(false)">Cancel</button>
+          </div>
+        </div>
+        <button class="cancel-btn" id="mm-add-btn" style="font-size:12px;margin-top:10px" onclick="toggleMMForm(true)">+ Add meet</button>
+      </div>
+      <div class="mymeets-card">
+        <h3>Handled ✓</h3>
+        <div class="mm-list" id="mm-past"></div>
+        <div style="font-size:12px;color:var(--text3);margin-top:10px">Meets auto-move here once the date passes.</div>
+      </div>
+    </div>
+  </div>
+  <!-- Sales -->
+  <div class="page" id="page-sales">
+    <div class="page-title">Sales</div>
+    <div class="page-sub">Track calls and closes. Google Sheets sync coming once we move to Claude Code.</div>
+    <div class="gs-banner"><strong>🔗 Google Sheets sync — coming soon.</strong> We'll pull your existing spreadsheet data in automatically. For now, log entries manually — no data lost when we connect it.</div>
+    <div class="sales-grid" id="sales-stats"></div>
+    <div class="sales-layout">
+      <div class="sales-card">
+        <h3>Conversion rate</h3>
+        <div class="conv-ring-wrap">
+          <div class="conv-ring">
+            <svg width="90" height="90" viewBox="0 0 90 90">
+              <circle cx="45" cy="45" r="36" fill="none" stroke="var(--surface2)" stroke-width="10"/>
+              <circle id="conv-arc" cx="45" cy="45" r="36" fill="none" stroke="var(--green-text)" stroke-width="10" stroke-linecap="round" stroke-dasharray="226" stroke-dashoffset="226"/>
+            </svg>
+            <div class="conv-ring-label"><div class="conv-ring-pct" id="conv-pct">0%</div><div class="conv-ring-sub">close rate</div></div>
+          </div>
+          <div class="conv-detail" id="conv-detail"><span style="color:var(--text3)">Log entries to see your rate.</span></div>
+        </div>
+      </div>
+      <div class="sales-card">
+        <h3>Log entry</h3>
+        <div class="log-form">
+          <div class="log-row">
+            <div><div style="font-size:11px;color:var(--text2);margin-bottom:4px">Date</div><input type="date" class="log-input" id="log-date"/></div>
+            <div><div style="font-size:11px;color:var(--text2);margin-bottom:4px">Calls</div><input type="number" class="log-input" id="log-calls" min="0" placeholder="0"/></div>
+          </div>
+          <div><div style="font-size:11px;color:var(--text2);margin-bottom:4px">Closes (signed)</div><input type="number" class="log-input" id="log-closes" min="0" placeholder="0"/></div>
+          <button class="save-btn" style="align-self:flex-start" onclick="addSalesEntry()">Add entry</button>
+        </div>
+      </div>
+    </div>
+    <div class="sales-card" style="margin-top:16px"><h3>History</h3><div class="log-list" id="sales-log"></div></div>
+  </div>
+  <!-- Churn -->
+  <div class="page" id="page-churn">
+    <div class="page-title">Churn</div>
+    <div class="page-sub">Track clients who have left and why.</div>
+    <div class="churn-layout">
+      <div class="churn-card"><h3>Monthly churn rate</h3><div class="churn-rate-big" id="churn-rate-big">—</div><div class="churn-sublabel" id="churn-sublabel"></div><div class="churn-formula">Churned this month ÷ active at start of month</div></div>
+      <div class="churn-card"><h3>Churn by reason</h3><div class="reason-bars" id="reason-bars"><div style="font-size:13px;color:var(--text3)">No data yet.</div></div></div>
+    </div>
+    <div class="churn-card"><h3>Churn history</h3><div class="churn-timeline" id="churn-timeline"><div style="font-size:13px;color:var(--text3);padding:1rem 0">No churned clients yet.</div></div></div>
+  </div>
+  <!-- Calendar -->
+  <div class="page" id="page-calendar">
+    <div class="page-title">Calendar</div>
+    <div class="page-sub">Your Google Calendar alongside your coaching schedule.</div>
+    <div class="coming-soon">
+      <div class="coming-soon-icon">📅</div>
+      <h2>Google Calendar sync — coming soon</h2>
+      <p>This page will show your Google Calendar events side by side with athlete meet dates and program due dates — everything in one view.</p>
+      <div class="coming-soon-steps">
+        <strong>What's needed to build this:</strong><br>
+        1. Move project to Claude Code<br>
+        2. Set up a free Google Cloud project (~15 min)<br>
+        3. Sign in with Google once to authorize<br>
+        4. Your calendar appears here automatically
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+
+<!-- Setup overlay -->
+<div class="setup-overlay" id="setup-overlay">
+  <div class="setup-box">
+    <h3>Database setup</h3>
+    <p>Go to <a href="https://supabase.com" target="_blank">supabase.com</a>, create a free project, go to <strong>Project Settings → API</strong> and paste your keys. Run this SQL in the <strong>SQL Editor</strong>:</p>
+    <code>create table athletes (id uuid primary key default gen_random_uuid(), name text, program text, due_date text, notes text, meets jsonb default '[]', start_date text, end_date text, churn_reason text, is_active boolean default true, created_at timestamptz default now());</code>
+    <div class="setup-inputs">
+      <input type="text" id="input-url" placeholder="Project URL  (https://xxxx.supabase.co)"/>
+      <input type="text" id="input-key" placeholder="Anon public key  (eyJh...)"/>
+    </div>
+    <div class="setup-row">
+      <button class="btn-primary" onclick="saveKeys()">Save & connect</button>
+      <button class="btn-secondary" onclick="closeSetup()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Athlete modal -->
+<div class="modal-overlay" id="athlete-modal">
+  <div class="modal">
+    <div class="modal-header"><h3 id="modal-title">Athlete</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-section"><div class="modal-label">Name</div><input class="modal-input" id="m-name" type="text"/></div>
+    <div class="modal-row modal-section">
+      <div><div class="modal-label">Program</div><input class="modal-input" id="m-program" type="text"/></div>
+      <div><div class="modal-label">Program due</div><input class="modal-input" id="m-due" type="date"/></div>
+    </div>
+    <div class="modal-row modal-section">
+      <div><div class="modal-label">Start date</div><input class="modal-input" id="m-start" type="date"/></div>
+      <div><div class="modal-label">Tenure</div><div id="m-tenure" style="font-size:13px;color:var(--text2);padding-top:10px">—</div></div>
+    </div>
+    <div class="modal-section"><div class="modal-label">Notes</div><textarea class="modal-input" id="m-notes" placeholder="Injury notes, cues, anything..."></textarea></div>
+    <div class="modal-section">
+      <div class="modal-label" style="margin-bottom:8px">Meets</div>
+      <div class="meets-list" id="meets-list"></div>
+      <div class="add-meet-form" id="add-meet-form">
+        <input type="text" id="new-meet-name" placeholder="Meet name"/>
+        <div class="add-meet-row"><input type="date" id="new-meet-date"/><input type="time" id="new-meet-time" placeholder="Start time (optional)"/></div>
+        <div style="display:flex;gap:6px"><button class="save-btn" onclick="addMeet()">Add meet</button><button class="cancel-btn" onclick="toggleMeetForm(false)">Cancel</button></div>
+      </div>
+      <button class="cancel-btn" id="add-meet-btn" style="font-size:12px" onclick="toggleMeetForm(true)">+ Add meet</button>
+    </div>
+    <hr class="modal-divider"/>
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div class="modal-label" style="margin-bottom:0">Client status</div>
+        <button class="churn-toggle-btn" id="churn-toggle-btn" onclick="toggleChurn()"></button>
+      </div>
+      <div id="churn-fields" style="display:none">
+        <div class="churn-section">
+          <div class="modal-row" style="margin-bottom:10px">
+            <div><div class="modal-label">End date</div><input class="modal-input" id="m-end" type="date"/></div>
+            <div><div class="modal-label">Reason</div>
+              <select class="modal-input" id="m-churn-reason">
+                <option value="">Select reason...</option>
+                <option>Cost / pricing</option>
+                <option>Moved to another coach</option>
+                <option>Injury / health</option>
+                <option>Life circumstances</option>
+                <option>Goals achieved</option>
+                <option>Lack of progress</option>
+                <option>Communication issues</option>
+                <option>Other</option>
+              </select>
+            </div>
+          </div>
+          <div><div class="modal-label">Additional notes</div><input class="modal-input" id="m-churn-notes" type="text" placeholder="Optional details..."/></div>
+        </div>
+      </div>
+      <div id="churn-active-msg" style="font-size:13px;color:var(--green-text)">✓ Active client</div>
+    </div>
+    <div class="modal-btns">
+      <button class="cancel-btn" onclick="closeModal()">Cancel</button>
+      <button class="save-btn" onclick="saveModal()">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let sb=null,athletes=[],salesLog=[],activeFilter='all',addOpen=false,sortCol='name',sortDir=1,modalId=null;
+const TODAY=new Date();TODAY.setHours(0,0,0,0);
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+document.getElementById('date-short').textContent=TODAY.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+document.getElementById('dash-greeting').textContent='Good '+(TODAY.getHours()<12?'morning':TODAY.getHours()<17?'afternoon':'evening')+' — here\'s your roster at a glance.';
+
+function daysDiff(ds){if(!ds)return Infinity;const d=new Date(ds);d.setHours(0,0,0,0);return Math.round((d-TODAY)/86400000);}
+function getStatus(a){if(!a.is_active)return'churned';const d=daysDiff(a.due_date);return d<0?'overdue':d<=7?'due':'ok';}
+function daysHint(ds){const d=daysDiff(ds);if(d===Infinity)return'';if(d<0)return Math.abs(d)+'d overdue';if(d===0)return'Today';if(d===1)return'Tomorrow';return'in '+d+'d';}
+function meetCountdown(ds){const d=daysDiff(ds);if(d===Infinity||d<0)return null;if(d===0)return{val:'Today',unit:''};if(d<7)return{val:d,unit:d===1?'day':'days'};if(d<60)return{val:Math.floor(d/7),unit:Math.floor(d/7)===1?'week':'weeks'};const m=Math.floor(d/30.44);return{val:m,unit:m===1?'month':'months'};}
+function nextMeet(a){const ms=(a.meets||[]).filter(m=>daysDiff(m.date)>=0);ms.sort((a,b)=>daysDiff(a.date)-daysDiff(b.date));return ms[0]||null;}
+function fmtDate(ds,ts){const d=new Date(ds+'T12:00:00');let s=d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});if(ts){const parts=ts.split(':').map(Number);s+=' · '+(parts[0]%12||12)+':'+(String(parts[1]).padStart(2,'0'))+' '+(parts[0]>=12?'PM':'AM');}return s;}
+function fmtShort(ds){if(!ds)return'—';return new Date(ds+'T12:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'});}
+function tenure(s,e){if(!s)return'—';const end=e?new Date(e+'T12:00:00'):new Date();const mo=Math.round((end-new Date(s+'T12:00:00'))/(1000*60*60*24*30.44));if(mo<1)return'< 1 month';if(mo<12)return mo+'mo';const y=Math.floor(mo/12),r=mo%12;return r?y+'y '+r+'mo':y+'yr';}
+const AV=['background:#dce8fa;color:#185fa5','background:#d6edcb;color:#2e5c0a','background:#fbe8d4;color:#7a3e00','background:#f5d9e7;color:#8b1f55','background:#e5e0f9;color:#4a3faa','background:#d4f0e5;color:#0e5c43'];
+function avStyle(id){const i=typeof id==='string'?(id.charCodeAt(0)+(id.charCodeAt(4)||0))%6:id%6;return AV[i];}
+function ini(n){return n.trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();}
+function pillHTML(s){if(s==='overdue')return'<span class="pill pill-red">Overdue</span>';if(s==='due')return'<span class="pill pill-amber">Due this week</span>';if(s==='churned')return'<span class="pill pill-gray">Churned</span>';return'<span class="pill pill-green">Active</span>';}
+
+function loadKeys(){return{url:localStorage.getItem('sb_url')||'',key:localStorage.getItem('sb_key')||''};}
+function saveKeys(){const url=document.getElementById('input-url').value.trim();const key=document.getElementById('input-key').value.trim();if(!url||!key){alert('Please enter both keys.');return;}localStorage.setItem('sb_url',url);localStorage.setItem('sb_key',key);initSB(url,key);closeSetup();}
+function initSB(url,key){try{sb=window.supabase.createClient(url,key);setSS('ok');loadAthletes();}catch(e){setSS('err');console.error(e);}}
+function setSS(s){document.getElementById('sync-dot').className='sync-dot sync-'+s;document.getElementById('sync-label').textContent=s==='ok'?'Connected':s==='err'?'Error':'Not connected';}
+
+async function loadAthletes(){if(!sb){renderAll();return;}const{data,error}=await sb.from('athletes').select('*').order('name');if(error){setSS('err');return;}athletes=data.map(a=>({...a,meets:a.meets||[],is_active:a.is_active!==false}));renderAll();}
+async function addAthlete(name,program,start){const row={name,program,due_date:null,notes:'',meets:[],start_date:start||null,end_date:null,churn_reason:null,is_active:true};if(sb){const{data,error}=await sb.from('athletes').insert(row).select().single();if(error){alert('Error: '+error.message);return;}athletes.push(data);}else athletes.push({...row,id:'local-'+Date.now()});renderAll();}
+async function updateAthlete(id,fields){athletes=athletes.map(a=>a.id===id?{...a,...fields}:a);renderAll();if(sb)await sb.from('athletes').update(fields).eq('id',id);}
+async function deleteAthlete(id){if(!confirm('Remove this athlete?'))return;athletes=athletes.filter(a=>a.id!==id);renderAll();if(sb)await sb.from('athletes').delete().eq('id',id);}
+
+function loadSalesLog(){try{salesLog=JSON.parse(localStorage.getItem('sales_log')||'[]');}catch{salesLog=[];}}
+function saveSalesLog(){localStorage.setItem('sales_log',JSON.stringify(salesLog));}
+function addSalesEntry(){const date=document.getElementById('log-date').value;const calls=parseInt(document.getElementById('log-calls').value)||0;const closes=parseInt(document.getElementById('log-closes').value)||0;if(!date||calls<0){alert('Enter a date and number of calls.');return;}if(closes>calls){alert("Closes can't exceed calls.");return;}salesLog.unshift({id:Date.now(),date,calls,closes});saveSalesLog();document.getElementById('log-calls').value='';document.getElementById('log-closes').value='';renderSalesPage();renderDashboard();}
+function deleteSalesEntry(id){salesLog=salesLog.filter(e=>e.id!==id);saveSalesLog();renderSalesPage();renderDashboard();}
+function salesThisMonth(){const now=new Date();return salesLog.filter(e=>{const d=new Date(e.date+'T12:00:00');return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});}
+
+function calcChurn(){const now=new Date();const ms=new Date(now.getFullYear(),now.getMonth(),1);const me=new Date(now.getFullYear(),now.getMonth()+1,0);const churned=athletes.filter(a=>{if(a.is_active||!a.end_date)return false;const ed=new Date(a.end_date+'T12:00:00');return ed>=ms&&ed<=me;}).length;const base=athletes.filter(a=>a.is_active).length+churned;return base===0?null:{rate:churned/base,churned,base};}
+
+function updateBadges(){const active=athletes.filter(a=>a.is_active);const due=active.filter(a=>getStatus(a)==='due').length;const overdue=active.filter(a=>getStatus(a)==='overdue').length;const meets=active.reduce((n,a)=>n+(a.meets||[]).filter(m=>daysDiff(m.date)>=0).length,0);const cc=athletes.filter(a=>!a.is_active).length;const bd=document.getElementById('badge-due');bd.textContent=overdue||due;bd.style.display=(overdue||due)?'':'none';bd.className='nav-badge'+(overdue?' ':'amber');const bm=document.getElementById('badge-meets');bm.textContent=meets;bm.style.display=meets?'':'none';const bc=document.getElementById('badge-churn');bc.textContent=cc;bc.style.display=cc?'':'none';const upcoming=myMeets.filter(m=>!mmIsPast(m.date)).length;const bmm=document.getElementById('badge-mymeets');bmm.textContent=upcoming;bmm.style.display=upcoming?'':'none';}
+
+function renderDashboard(){
+  const active=athletes.filter(a=>a.is_active);const ch=calcChurn();const pct=ch?Math.round(ch.rate*100):0;
+  const meets=active.reduce((n,a)=>n+(a.meets||[]).filter(m=>daysDiff(m.date)>=0).length,0);
+  const sm=salesThisMonth();const mCalls=sm.reduce((n,e)=>n+e.calls,0);const mCloses=sm.reduce((n,e)=>n+e.closes,0);const conv=mCalls>0?Math.round(mCloses/mCalls*100):0;
+  document.getElementById('dash-stats').innerHTML='<div class="stat"><div class="stat-label">Active clients</div><div class="stat-val">'+active.length+'</div></div><div class="stat"><div class="stat-label">Overdue</div><div class="stat-val red">'+active.filter(a=>getStatus(a)==='overdue').length+'</div></div><div class="stat"><div class="stat-label">Due this week</div><div class="stat-val amber">'+active.filter(a=>getStatus(a)==='due').length+'</div></div><div class="stat"><div class="stat-label">Meets scheduled</div><div class="stat-val purple">'+meets+'</div></div><div class="stat"><div class="stat-label">Monthly churn</div><div class="stat-val '+(pct===0?'green':pct<=5?'amber':'red')+'">'+pct+'%</div></div>';
+  const od=active.filter(a=>getStatus(a)==='overdue').sort((a,b)=>daysDiff(a.due_date)-daysDiff(b.due_date));
+  document.getElementById('dash-overdue').innerHTML=od.length?od.slice(0,5).map(a=>'<div class="dash-row"><div><div class="dash-row-name">'+a.name+'</div><div class="dash-row-meta">'+(a.program||'—')+'</div></div><span class="pill pill-red" style="font-size:10px">'+Math.abs(daysDiff(a.due_date))+'d late</span></div>').join(''):'<div class="dash-empty">All programs up to date ✓</div>';
+  const allMeets=[];active.forEach(a=>(a.meets||[]).filter(m=>daysDiff(m.date)>=0).forEach(m=>allMeets.push({...m,athlete:a.name})));allMeets.sort((a,b)=>daysDiff(a.date)-daysDiff(b.date));
+  document.getElementById('dash-meets').innerHTML=allMeets.length?allMeets.slice(0,5).map(m=>{const cd=meetCountdown(m.date);return'<div class="dash-row"><div><div class="dash-row-name">'+m.name+'</div><div class="dash-row-meta">'+m.athlete+'</div></div><span style="font-size:12px;color:var(--purple-text);font-weight:600">'+(cd?(typeof cd.val==='string'?cd.val:cd.val+' '+cd.unit):'')+'</span></div>';}).join(''):'<div class="dash-empty">No meets scheduled yet.</div>';
+  const dw=active.filter(a=>getStatus(a)==='due').sort((a,b)=>daysDiff(a.due_date)-daysDiff(b.due_date));
+  document.getElementById('dash-due').innerHTML=dw.length?dw.map(a=>'<div class="dash-row"><div><div class="dash-row-name">'+a.name+'</div><div class="dash-row-meta">'+(a.program||'—')+'</div></div><span style="font-size:12px;color:var(--amber-text);font-weight:600">'+daysHint(a.due_date)+'</span></div>').join(''):'<div class="dash-empty">Nothing due this week.</div>';
+  document.getElementById('dash-sales').innerHTML=mCalls>0?'<div class="dash-row"><div class="dash-row-name">Calls this month</div><strong>'+mCalls+'</strong></div><div class="dash-row"><div class="dash-row-name">Closes this month</div><strong style="color:var(--green-text)">'+mCloses+'</strong></div><div class="dash-row"><div class="dash-row-name">Conversion rate</div><strong style="color:'+(conv>=30?'var(--green-text)':conv>=15?'var(--amber-text)':'var(--red-text)')+'">'+conv+'%</strong></div>':'<div class="dash-empty">No sales logged this month yet.</div>';
+}
+
+function renderSalesPage(){
+  const all=salesLog;const totalCalls=all.reduce((n,e)=>n+e.calls,0);const totalCloses=all.reduce((n,e)=>n+e.closes,0);
+  const sm=salesThisMonth();const mCalls=sm.reduce((n,e)=>n+e.calls,0);const mCloses=sm.reduce((n,e)=>n+e.closes,0);
+  const convAll=totalCalls>0?Math.round(totalCloses/totalCalls*100):0;const convMonth=mCalls>0?Math.round(mCloses/mCalls*100):0;
+  document.getElementById('sales-stats').innerHTML='<div class="sales-stat"><div class="sales-stat-label">Total calls</div><div class="sales-stat-val">'+totalCalls+'</div><div class="sales-stat-sub">All time</div></div><div class="sales-stat"><div class="sales-stat-label">Total closes</div><div class="sales-stat-val" style="color:var(--green-text)">'+totalCloses+'</div><div class="sales-stat-sub">All time</div></div><div class="sales-stat"><div class="sales-stat-label">Calls this month</div><div class="sales-stat-val">'+mCalls+'</div><div class="sales-stat-sub">'+MONTHS[new Date().getMonth()]+'</div></div><div class="sales-stat"><div class="sales-stat-label">Closes this month</div><div class="sales-stat-val" style="color:var(--green-text)">'+mCloses+'</div><div class="sales-stat-sub">'+MONTHS[new Date().getMonth()]+'</div></div>';
+  const circ=226;document.getElementById('conv-arc').style.strokeDashoffset=Math.max(0,circ-(circ*(convAll/100)));document.getElementById('conv-arc').style.stroke=convAll>=30?'var(--green-text)':convAll>=15?'var(--amber-text)':'var(--red-text)';
+  document.getElementById('conv-pct').textContent=convAll+'%';
+  document.getElementById('conv-detail').innerHTML=totalCalls>0?'<strong>'+totalCloses+'</strong> closes<br><strong>'+totalCalls+'</strong> total calls<br><strong style="color:'+(convMonth>=30?'var(--green-text)':convMonth>=15?'var(--amber-text)':'var(--red-text)')+'">'+convMonth+'%</strong> this month':'<span style="color:var(--text3)">Log entries to see your rate.</span>';
+  const log=document.getElementById('sales-log');
+  if(!all.length){log.innerHTML='<div style="font-size:13px;color:var(--text3);padding:1rem 0">No entries yet. Log your first call session above.</div>';return;}
+  log.innerHTML=all.map(e=>{const rate=e.calls>0?Math.round(e.closes/e.calls*100):0;const rc=rate>=30?'':rate>=15?' mid':' low';const d=new Date(e.date+'T12:00:00');return'<div class="log-item"><span class="log-item-date">'+d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'</span><span>'+e.calls+' calls</span><span class="log-item-closes">'+e.closes+' closed</span><span class="log-item-rate'+rc+'">'+rate+'%</span><button class="log-del" onclick="deleteSalesEntry('+e.id+')">✕</button></div>';}).join('');
+}
+
+function renderMeetPage(){const wrap=document.getElementById('meet-grid-wrap');const map={};athletes.filter(a=>a.is_active).forEach(a=>{(a.meets||[]).forEach(m=>{if(daysDiff(m.date)<0)return;const k=m.name+'|'+m.date;if(!map[k])map[k]={name:m.name,date:m.date,time:m.time,aths:[]};map[k].aths.push(a);});});const meets=Object.values(map).sort((a,b)=>daysDiff(a.date)-daysDiff(b.date));if(!meets.length){wrap.innerHTML='<div class="empty">No upcoming meets. Open an athlete to add one.</div>';return;}wrap.innerHTML='<div class="meet-grid">'+meets.map(m=>{const cd=meetCountdown(m.date);return'<div class="meet-card"><div class="meet-card-top"><div><div class="meet-card-name">'+m.name+'</div><div class="meet-card-date">'+fmtDate(m.date,m.time)+'</div></div><div style="text-align:right"><div class="meet-card-cd">'+(cd?(typeof cd.val==='string'?cd.val:cd.val):'—')+'</div><div class="meet-card-unit">'+(cd&&typeof cd.val!=='string'?cd.unit+' out':'')+'</div></div></div><div class="meet-athletes">'+m.aths.map(a=>'<div class="meet-ath-chip"><div class="mini-avatar" style="'+avStyle(a.id)+'">'+ini(a.name)+'</div>'+a.name+'</div>').join('')+'</div></div>';}).join('')+'</div>';}
+
+function renderChurnPage(){const ch=calcChurn();const pct=ch?Math.round(ch.rate*100):0;const big=document.getElementById('churn-rate-big');big.textContent=pct+'%';big.className='churn-rate-big'+(pct===0?' good':pct<=5?' ok':' bad');document.getElementById('churn-sublabel').textContent=ch?ch.churned+' left out of '+ch.base+' active at start of '+MONTHS[new Date().getMonth()]:'No data yet — add start dates to clients.';const churned=athletes.filter(a=>!a.is_active&&a.churn_reason);const reasons={};churned.forEach(a=>{const r=a.churn_reason||'Unknown';reasons[r]=(reasons[r]||0)+1;});const sorted=Object.entries(reasons).sort((a,b)=>b[1]-a[1]);const maxR=sorted[0]?sorted[0][1]:1;document.getElementById('reason-bars').innerHTML=sorted.length?sorted.map(([r,n])=>'<div class="reason-row"><div class="reason-label" title="'+r+'">'+r+'</div><div class="reason-bar-wrap"><div class="reason-bar" style="width:'+Math.round(n/maxR*100)+'%"></div></div><div class="reason-count">'+n+'</div></div>').join(''):'<div style="font-size:13px;color:var(--text3)">No churn data yet.</div>';const history=athletes.filter(a=>!a.is_active).sort((a,b)=>new Date(b.end_date||0)-new Date(a.end_date||0));document.getElementById('churn-timeline').innerHTML=history.length?history.map(a=>'<div class="timeline-row"><div><div class="tl-name">'+a.name+'</div><div class="tl-meta">'+fmtShort(a.start_date)+' → '+fmtShort(a.end_date)+' · '+tenure(a.start_date,a.end_date)+'</div></div>'+(a.churn_reason?'<div class="tl-reason">'+a.churn_reason+'</div>':'<div style="font-size:12px;color:var(--text3)">No reason</div>')+'</div>').join(''):'<div style="font-size:13px;color:var(--text3);padding:1rem 0">No churned clients yet.</div>';}
+
+function sortBy(col){if(sortCol===col)sortDir*=-1;else{sortCol=col;sortDir=1;}document.querySelectorAll('.sort-icon').forEach(el=>el.textContent='');const el=document.getElementById('sort-'+col);if(el)el.textContent=sortDir===1?'↑':'↓';renderTable();}
+function sv(a,col){if(col==='meet'){const m=nextMeet(a);return m?daysDiff(m.date):9999;}if(col==='status'){const s=getStatus(a);return s==='overdue'?0:s==='due'?1:s==='ok'?2:3;}if(col==='due_date')return daysDiff(a.due_date);if(col==='start_date')return a.start_date||'9999';return(a[col]||'').toLowerCase();}
+function setFilter(f,btn){activeFilter=f;document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderTable();}
+function toggleAdd(){addOpen=!addOpen;renderTable();}
+function renderTable(){const body=document.getElementById('athlete-body');let list=athletes;if(activeFilter==='active')list=list.filter(a=>a.is_active);else if(activeFilter==='overdue')list=list.filter(a=>getStatus(a)==='overdue');else if(activeFilter==='due')list=list.filter(a=>getStatus(a)==='due');else if(activeFilter==='meet')list=list.filter(a=>a.is_active&&nextMeet(a));else if(activeFilter==='churned')list=list.filter(a=>!a.is_active);list=[...list].sort((a,b)=>{const av=sv(a,sortCol),bv=sv(b,sortCol);return av<bv?-sortDir:av>bv?sortDir:0;});let html='';list.forEach(a=>{const status=getStatus(a);const nm=nextMeet(a);const cd=nm?meetCountdown(nm.date):null;html+='<tr class="'+((!a.is_active)?'churned-row':'')+'" onclick="openModal(\''+a.id+'\')"><td><div class="name-wrap"><div class="avatar" style="'+avStyle(a.id)+'">'+ini(a.name)+'</div><div><div class="athlete-name">'+a.name+'</div>'+(a.notes?'<div class="sub-text">'+a.notes+'</div>':'')+'</div></div></td><td style="color:var(--text2);font-size:13px">'+(a.program||'—')+'</td><td style="font-size:13px;color:var(--text2)">'+fmtShort(a.start_date)+'</td><td>'+(a.is_active?(nm?'<div class="meet-chip">🏋️ '+nm.name+'</div><div class="meet-countdown">'+(cd?(typeof cd.val==='string'?cd.val:cd.val+' '+cd.unit+' out'):'Past')+'</div>':'<span class="no-meet">No meet</span>'):'<span class="no-meet">—</span>')+'</td><td>'+pillHTML(status)+'</td><td onclick="event.stopPropagation()"><button class="action-btn" onclick="deleteAthlete(\''+a.id+'\')" title="Remove">✕</button></td></tr>';});if(addOpen){html+='<tr class="add-row"><td><input type="text" id="new-name" placeholder="Athlete name" onclick="event.stopPropagation()"/></td><td><input type="text" id="new-program" placeholder="Program name" onclick="event.stopPropagation()"/></td><td><input type="date" id="new-start" class="date-input" value="'+TODAY.toISOString().slice(0,10)+'" onclick="event.stopPropagation()"/></td><td></td><td></td><td style="display:flex;gap:6px"><button class="save-btn" onclick="event.stopPropagation();submitAdd()">Save</button><button class="cancel-btn" onclick="event.stopPropagation();toggleAdd()">Cancel</button></td></tr>';}if(!html)html='<tr><td colspan="6" class="empty">No athletes match this filter.</td></tr>';body.innerHTML=html;if(addOpen)document.getElementById('new-name')&&document.getElementById('new-name').focus();}
+function submitAdd(){const name=document.getElementById('new-name')&&document.getElementById('new-name').value.trim();const prog=document.getElementById('new-program')&&document.getElementById('new-program').value.trim();const start=document.getElementById('new-start')&&document.getElementById('new-start').value;if(!name){document.getElementById('new-name').focus();return;}addOpen=false;addAthlete(name,prog||'No program',start);}
+
+function renderAll(){updateBadges();renderDashboard();renderTable();renderMeetPage();renderChurnPage();renderSalesPage();renderMyMeets();}
+
+function goTo(page,btn){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+page).classList.add('active');document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');if(window.innerWidth<=700){document.getElementById('sidebar').classList.remove('open');document.getElementById('backdrop').classList.remove('open');}}
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('backdrop').classList.toggle('open');}
+function openSetup(){document.getElementById('setup-overlay').classList.add('open');}
+function closeSetup(){document.getElementById('setup-overlay').classList.remove('open');}
+
+function openModal(id){modalId=id;const a=athletes.find(x=>x.id==id);document.getElementById('modal-title').textContent=a.name;document.getElementById('m-name').value=a.name;document.getElementById('m-program').value=a.program||'';document.getElementById('m-due').value=a.due_date||'';document.getElementById('m-start').value=a.start_date||'';document.getElementById('m-notes').value=a.notes||'';document.getElementById('m-end').value=a.end_date||'';document.getElementById('m-churn-reason').value=a.churn_reason||'';document.getElementById('m-tenure').textContent=tenure(a.start_date,a.end_date);document.getElementById('m-start').oninput=function(){document.getElementById('m-tenure').textContent=tenure(this.value,athletes.find(x=>x.id==modalId).end_date);};const isChurned=!a.is_active;document.getElementById('churn-fields').style.display=isChurned?'block':'none';document.getElementById('churn-active-msg').style.display=isChurned?'none':'block';const btn=document.getElementById('churn-toggle-btn');btn.textContent=isChurned?'Mark as active':'Mark as churned';btn.className='churn-toggle-btn'+(isChurned?' undo':'');toggleMeetForm(false);renderMeetsList(a);document.getElementById('athlete-modal').classList.add('open');}
+function closeModal(){document.getElementById('athlete-modal').classList.remove('open');modalId=null;}
+function saveModal(){const name=document.getElementById('m-name').value.trim();if(!name){document.getElementById('m-name').focus();return;}const a=athletes.find(x=>x.id==modalId);updateAthlete(modalId,{name,program:document.getElementById('m-program').value.trim(),due_date:document.getElementById('m-due').value||null,start_date:document.getElementById('m-start').value||null,notes:document.getElementById('m-notes').value,end_date:document.getElementById('m-end').value||null,churn_reason:document.getElementById('m-churn-reason').value||null,is_active:a.is_active});closeModal();}
+function toggleChurn(){const a=athletes.find(x=>x.id==modalId);const nowChurned=a.is_active;updateAthlete(modalId,{is_active:!nowChurned,end_date:nowChurned?TODAY.toISOString().slice(0,10):null,churn_reason:nowChurned?null:a.churn_reason});openModal(modalId);}
+function toggleMeetForm(show){document.getElementById('add-meet-form').style.display=show?'flex':'none';document.getElementById('add-meet-btn').style.display=show?'none':'';if(show)setTimeout(function(){document.getElementById('new-meet-name').focus();},50);}
+function renderMeetsList(a){const list=document.getElementById('meets-list');const meets=(a.meets||[]).slice().sort((x,y)=>daysDiff(x.date)-daysDiff(y.date));if(!meets.length){list.innerHTML='<div style="font-size:13px;color:var(--text3);margin-bottom:4px">No meets yet.</div>';return;}list.innerHTML=meets.map((m,i)=>{const cd=meetCountdown(m.date);const past=daysDiff(m.date)<0;return'<div class="meet-item"><div class="meet-item-left"><div class="meet-item-name">'+m.name+'</div><div class="meet-item-meta">'+fmtDate(m.date,m.time)+'</div></div><div class="meet-item-cd">'+(past?'<span style="color:var(--text3)">Past</span>':(cd?(typeof cd.val==='string'?cd.val:cd.val+' '+cd.unit+' out'):''))+'</div><button class="action-btn" onclick="removeMeet('+i+')" title="Remove">✕</button></div>';}).join('');}
+function addMeet(){const name=document.getElementById('new-meet-name').value.trim();const date=document.getElementById('new-meet-date').value;const time=document.getElementById('new-meet-time').value;if(!name||!date){alert('Enter a meet name and date.');return;}const a=athletes.find(x=>x.id==modalId);const meets=[...(a.meets||[]),{name,date,time:time||''}];updateAthlete(modalId,{meets});document.getElementById('new-meet-name').value='';document.getElementById('new-meet-date').value='';document.getElementById('new-meet-time').value='';toggleMeetForm(false);renderMeetsList({...a,meets});}
+function removeMeet(idx){const a=athletes.find(x=>x.id==modalId);const meets=(a.meets||[]).filter((_,i)=>i!==idx);updateAthlete(modalId,{meets});renderMeetsList({...a,meets});}
+
+document.getElementById('athlete-modal').addEventListener('click',function(e){if(e.target===e.currentTarget)closeModal();});
+document.getElementById('setup-overlay').addEventListener('click',function(e){if(e.target===e.currentTarget)closeSetup();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeModal();closeSetup();if(addOpen){addOpen=false;renderTable();}}});
+
+// ── My Meets ──────────────────────────────────────────────
+let myMeets=[];
+function loadMyMeets(){try{myMeets=JSON.parse(localStorage.getItem('my_meets')||'[]');}catch{myMeets=[];}}
+function saveMyMeets(){localStorage.setItem('my_meets',JSON.stringify(myMeets));}
+function homeCity(){return localStorage.getItem('mm_home')||'';}
+
+function isTravel(city){
+  const home=homeCity().trim().toLowerCase();
+  if(!home||!city)return null;
+  return city.trim().toLowerCase()!==home;
+}
+function mmIsPast(ds){return daysDiff(ds)<0;}
+function mmCountdown(ds){
+  const d=daysDiff(ds);
+  if(d===0)return'Today';if(d===1)return'Tomorrow';if(d<0)return'';
+  if(d<7)return d+'d out';
+  if(d<60)return Math.floor(d/7)+'wk out';
+  return Math.floor(d/30.44)+'mo out';
+}
+
+function addMyMeet(){
+  const name=document.getElementById('mm-name').value.trim();
+  const date=document.getElementById('mm-date').value;
+  const time=document.getElementById('mm-time').value;
+  const city=document.getElementById('mm-city').value.trim();
+  const home=document.getElementById('mm-home').value.trim();
+  if(!name||!date){alert('Enter a meet name and date.');return;}
+  if(home)localStorage.setItem('mm_home',home);
+  myMeets.push({id:Date.now(),name,date,time:time||'',city:city||''});
+  myMeets.sort((a,b)=>new Date(a.date)-new Date(b.date));
+  saveMyMeets();
+  document.getElementById('mm-name').value='';
+  document.getElementById('mm-date').value='';
+  document.getElementById('mm-time').value='';
+  document.getElementById('mm-city').value='';
+  toggleMMForm(false);
+  renderMyMeets();updateBadges();
+}
+function deleteMyMeet(id){
+  myMeets=myMeets.filter(m=>m.id!==id);saveMyMeets();renderMyMeets();updateBadges();
+}
+function toggleMMForm(show){
+  document.getElementById('mm-add-form').style.display=show?'flex':'none';
+  document.getElementById('mm-add-btn').style.display=show?'none':'';
+  if(show){
+    document.getElementById('mm-date').value=TODAY.toISOString().slice(0,10);
+    const h=homeCity();if(h)document.getElementById('mm-home').value=h;
+    setTimeout(function(){document.getElementById('mm-name').focus();},50);
+  }
+}
+
+function renderMyMeets(){
+  const upcoming=myMeets.filter(m=>!mmIsPast(m.date));
+  const past=myMeets.filter(m=>mmIsPast(m.date)).reverse();
+  const totalHandled=past.length;
+  const traveling=upcoming.filter(m=>isTravel(m.city)===true).length;
+
+  document.getElementById('mm-stats').innerHTML=
+    '<div class="stat"><div class="stat-label">Upcoming</div><div class="stat-val purple">'+upcoming.length+'</div></div>'+
+    '<div class="stat"><div class="stat-label">Handled</div><div class="stat-val green">'+totalHandled+'</div></div>'+
+    '<div class="stat"><div class="stat-label">Travel meets</div><div class="stat-val blue">'+traveling+'</div></div>';
+
+  const upEl=document.getElementById('mm-upcoming');
+  upEl.innerHTML=upcoming.length?upcoming.map(m=>{
+    const travel=isTravel(m.city);
+    const cityChip=m.city?'<div class="mm-item-city'+(travel===false?' local':'')+'">'+( travel===true?'✈️':'📍')+' '+m.city+'</div>':'';
+    return'<div class="mm-item"><div class="mm-item-left"><div class="mm-item-name">'+m.name+'</div>'+
+      '<div class="mm-item-meta">'+fmtDate(m.date,m.time)+'</div>'+cityChip+'</div>'+
+      '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">'+
+      '<div class="mm-cd">'+mmCountdown(m.date)+'</div>'+
+      '<button class="action-btn" onclick="deleteMyMeet('+m.id+')" title="Remove">✕</button></div></div>';
+  }).join(''):'<div class="dash-empty" style="padding:0.5rem 0">No upcoming meets added yet.</div>';
+
+  const pastEl=document.getElementById('mm-past');
+  pastEl.innerHTML=past.length?past.map(m=>{
+    const travel=isTravel(m.city);
+    const cityChip=m.city?'<span style="font-size:11px;color:var(--text3);margin-left:4px">· '+m.city+'</span>':'';
+    return'<div class="mm-item"><div class="mm-item-left">'+
+      '<div class="mm-item-name">'+m.name+cityChip+'</div>'+
+      '<div class="mm-item-meta">'+fmtDate(m.date,m.time)+'</div></div>'+
+      '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">'+
+      '<span class="mm-handled">Handled ✓</span>'+
+      '<button class="action-btn" onclick="deleteMyMeet('+m.id+')" title="Remove">✕</button></div></div>';
+  }).join(''):'<div class="dash-empty" style="padding:0.5rem 0">No meets handled yet — they\'ll appear here automatically.</div>';
+}
+
+document.getElementById('log-date').value=TODAY.toISOString().slice(0,10);
+loadSalesLog();loadMyMeets();
+const keys=loadKeys();
+if(keys.url&&keys.key){document.getElementById('input-url').value=keys.url;document.getElementById('input-key').value=keys.key;initSB(keys.url,keys.key);}
+else{renderAll();setTimeout(openSetup,600);}
+</script>
+</body>
+</html>
