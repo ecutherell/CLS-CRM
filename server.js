@@ -5,6 +5,7 @@ import { readFileSync, writeFileSync, existsSync } from 'fs';
 import 'dotenv/config';
 import calendarRouter from './server/routes/calendar.js';
 import remindersRouter from './server/routes/reminders.js';
+import stripeRouter from './server/routes/stripe.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -19,7 +20,7 @@ function writeServerData(data) {
   writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static(join(__dirname, 'public')));
 
 // Serve Supabase credentials to the client so it auto-connects
@@ -43,7 +44,9 @@ app.post('/api/data/:key', (req, res) => {
   res.json({ ok: true });
 });
 
-app.use('/api/calendar', calendarRouter);
+app.use('/api/stripe', stripeRouter);
+app.use('/api/calendar', calendarRouter); // legacy path kept
+app.use('/api/gcal', calendarRouter);     // matches Google Console redirect URI
 app.use('/api/reminders', remindersRouter);
 
 app.listen(PORT, () => {

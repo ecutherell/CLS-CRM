@@ -10,6 +10,7 @@
 </head>
 <body>
 <input type="date" id="global-date-picker" style="position:fixed;top:50%;left:50%;width:0;height:0;opacity:0;pointer-events:none;z-index:-1"/>
+<div id="meet-ath-popup" style="display:none;position:fixed;z-index:500;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:14px 16px;box-shadow:0 6px 24px rgba(0,0,0,0.4);min-width:200px"></div>
 <div id="rich-tooltip" style="display:none;position:fixed;z-index:400;background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,0.35);pointer-events:none;line-height:2;white-space:nowrap"></div>
 <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
 <div class="sidebar-backdrop" id="backdrop" onclick="toggleSidebar()"></div>
@@ -22,9 +23,10 @@
   </div>
   <div class="sidebar-nav">
     <div class="nav-label">Overview</div>
-    <button class="nav-item active" onclick="goTo('dashboard',this)"><span class="nav-icon">⚡</span>Dashboard</button>
+    <button class="nav-item active" onclick="goTo('dashboard',this)"><span class="nav-icon">⚡</span>Dashboard<span class="nav-badge" id="badge-due" style="display:none"></span></button>
     <div class="nav-label">Coaching</div>
-    <button class="nav-item" onclick="goTo('athletes',this)"><span class="nav-icon">🏋️</span>Athletes<span class="nav-badge amber" id="badge-due" style="display:none"></span></button>
+    <button class="nav-item" onclick="goTo('athletes',this)"><span class="nav-icon">🏋️</span>Athletes</button>
+    <button id="nav-prcharts" class="nav-item" onclick="goTo('prcharts',this);renderPrCharts()"><span class="nav-icon">📈</span>PR Charts</button>
     <button id="nav-meets" class="nav-item" onclick="goTo('meets',this)"><span class="nav-icon">🗓️</span>Meets<span class="nav-badge blue" id="badge-meets" style="display:none"></span></button>
     <button id="nav-mymeets" class="nav-item" onclick="goTo('mymeets',this)"><span class="nav-icon">🗓️</span>Meets I'm handling<span class="nav-badge blue" id="badge-mymeets" style="display:none"></span></button>
     <div class="nav-label">Business</div>
@@ -37,7 +39,7 @@
     <button id="nav-testimonials" class="nav-item" onclick="goTo('testimonials',this)"><span class="nav-icon">🎥</span>Testimonials</button>
     <button id="nav-format" class="nav-item" onclick="goTo('format',this);renderFormatPage()"><span class="nav-icon">📋</span>Format fixes<span class="nav-badge amber" id="badge-format" style="display:none"></span></button>
     <button id="nav-birthdays" class="nav-item"><span class="nav-icon">🎂</span>Birthdays<span class="nav-soon">Soon</span></button>
-    <button id="nav-calendar" class="nav-item" onclick="goTo('calendar',this)"><span class="nav-icon">📅</span>Calendar<span class="nav-soon">Soon</span></button>
+    <button id="nav-calendar" class="nav-item" onclick="goTo('calendar',this);initCalendarPage()"><span class="nav-icon">📅</span>Calendar</button>
   </div>
   <div class="sidebar-footer">
     <button class="setup-trigger" onclick="openSetup()"><span style="font-size:14px">⚙️</span>Settings</button>
@@ -50,6 +52,12 @@
     <div class="page-sub" id="dash-greeting"></div>
     <div class="stats" id="dash-stats"></div>
     <div class="dash-grid">
+      <div class="dash-card" style="display:flex;flex-direction:column">
+        <div class="dash-card-title">🚨 Overdue / Needs Attention ASAP</div>
+        <div class="no-scrollbar" style="overflow-y:auto;max-height:340px;flex:1">
+          <div id="dash-overdue"></div>
+        </div>
+      </div>
       <div class="dash-card" style="display:flex;flex-direction:column">
         <div class="dash-card-title">📅 Due this week</div>
         <div class="no-scrollbar" style="overflow-y:auto;max-height:340px;flex:1">
@@ -64,14 +72,46 @@
           </div>
         </div>
       </div>
+      <div class="dash-card"><div class="dash-card-title">🏆 Upcoming meets</div><div id="dash-meets"></div></div>
       <div class="dash-card" id="dash-low-contact-wrap" style="display:none;flex-direction:column">
         <div class="dash-card-title" style="color:#5c9cf5">💬 Text this week</div>
         <div class="no-scrollbar" style="overflow-y:auto;max-height:340px;flex:1"><div id="dash-low-contact"></div></div>
       </div>
-      <div class="dash-card"><div class="dash-card-title">🏆 Upcoming meets</div><div id="dash-meets"></div></div>
-      <div class="dash-card"><div class="dash-card-title">⚠️ Needs attention</div><div id="dash-overdue"></div></div>
       <div class="dash-card"><div class="dash-card-title">📊 Sales this month</div><div id="dash-sales"></div></div>
+      <div class="dash-card" style="display:flex;flex-direction:column">
+        <div class="dash-card-title">📞 Plan a call</div>
+        <div id="dash-calls" style="flex:1;overflow-y:auto;max-height:280px"></div>
+        <div style="margin-top:10px;display:flex;gap:6px">
+          <select id="call-athlete-sel" style="flex:1;font-size:12px;padding:5px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2)">
+            <option value="">— pick athlete —</option>
+          </select>
+          <input type="date" id="call-date" style="font-size:12px;padding:5px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2)"/>
+          <button onclick="addPlannedCall()" style="padding:5px 12px;border-radius:6px;border:none;background:var(--accent);color:#fff;font-size:12px;cursor:pointer">Add</button>
+        </div>
+      </div>
     </div>
+  </div>
+  <!-- PR Charts -->
+  <div class="page" id="page-prcharts">
+    <div class="page-title">PR Tracker</div>
+    <div class="page-sub">Block-by-block PR status across your full roster.</div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:20px">
+      <button class="filter-btn active" onclick="setPrRosterFilter('all',this)">All</button>
+      <button class="filter-btn" onclick="setPrRosterFilter('streak',this)">🔥 On a streak</button>
+      <button class="filter-btn" onclick="setPrRosterFilter('attention',this)">⚠️ Needs attention</button>
+      <button class="filter-btn" onclick="setPrRosterFilter('nologs',this)">No history</button>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
+        <span style="font-size:12px;color:var(--text3)">Sort:</span>
+        <select id="prchart-sort" onchange="renderPrCharts()" style="font-size:12px;padding:5px 8px;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);color:var(--text);font-family:inherit">
+          <option value="name">Name</option>
+          <option value="pct">PR% (high→low)</option>
+          <option value="streak">Streak</option>
+          <option value="attention">Needs attention first</option>
+          <option value="recent">Most recent block</option>
+        </select>
+      </div>
+    </div>
+    <div id="prchart-roster" style="max-width:900px"></div>
   </div>
   <!-- Athletes -->
   <div class="page" id="page-athletes">
@@ -97,6 +137,7 @@
           <th onclick="sortBy('due_date')" id="th-due-date">Program due <span class="sort-icon" id="sort-due_date"></span></th>
           <th onclick="sortBy('meet')">Next meet <span class="sort-icon" id="sort-meet"></span></th>
           <th onclick="sortBy('status')">Status <span class="sort-icon" id="sort-status"></span></th>
+          <th style="white-space:nowrap">PR blocks</th>
           <th></th>
         </tr></thead>
         <tbody id="athlete-body"><tr><td colspan="6" class="loading">Loading...</td></tr></tbody>
@@ -107,6 +148,9 @@
   <div class="page" id="page-meets">
     <div class="page-title">Meets</div>
     <div class="page-sub">All upcoming competitions across your roster.</div>
+    <div class="stats" id="meet-page-stats" style="margin-bottom:16px"></div>
+    <div id="meet-week-out-wrap" style="display:none;border-radius:10px;padding:14px 16px;margin-bottom:16px"></div>
+    <div id="meet-ask-wrap" style="display:none;background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.25);border-radius:10px;padding:14px 16px;margin-bottom:20px"></div>
     <div id="meet-grid-wrap"></div>
   </div>
   <!-- My Meets -->
@@ -199,21 +243,33 @@
   <!-- Payments -->
   <div class="page" id="page-payments">
     <div class="page-title">Payments</div>
-    <div class="page-sub">Track non-standard billing — late payments, month-to-month, paid in advance, etc.</div>
-    <div class="stats" id="payments-stats"></div>
-    <div style="margin-top:1rem">
+    <div class="stats" id="stripe-stats"></div>
+    <div style="margin-bottom:1rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:600;color:var(--text)">💳 Stripe</div>
+        <button onclick="loadStripeData()" id="stripe-refresh-btn" style="font-size:12px;padding:4px 12px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);cursor:pointer">↻ Refresh</button>
+      </div>
+      <div id="stripe-status" style="font-size:13px;color:var(--text3);margin-bottom:8px"></div>
+      <div id="stripe-progress-wrap" style="display:none;margin-bottom:10px">
+        <div style="height:3px;border-radius:2px;background:var(--border2);overflow:hidden">
+          <div id="stripe-progress-bar" style="height:100%;width:0%;background:var(--accent);border-radius:2px;transition:width 0.4s ease"></div>
+        </div>
+        <div id="stripe-progress-label" style="font-size:11px;color:var(--text3);margin-top:4px">Fetching customers…</div>
+      </div>
       <table class="athlete-table" style="width:100%">
         <thead>
           <tr>
-            <th>Athlete</th>
-            <th>Note</th>
-            <th>Next payment due</th>
-            <th style="width:32px"></th>
+            <th>Stripe name</th>
+            <th>CRM athlete</th>
+            <th>Last payment</th>
+            <th>Next billing</th>
+            <th>Status</th>
           </tr>
         </thead>
-        <tbody id="payments-body"></tbody>
+        <tbody id="stripe-body"></tbody>
       </table>
     </div>
+    <div id="stripe-recent-payments" style="margin-top:8px;padding-top:4px;border-top:1px solid var(--border2)"></div>
   </div>
   <!-- Churn -->
   <div class="page" id="page-churn">
@@ -396,18 +452,8 @@
   <!-- Calendar -->
   <div class="page" id="page-calendar">
     <div class="page-title">Calendar</div>
-    <div class="page-sub">Your Google Calendar alongside your coaching schedule.</div>
-    <div class="coming-soon">
-      <div class="coming-soon-icon">📅</div>
-      <h2>Google Calendar sync — coming soon</h2>
-      <p>This page will show your Google Calendar events side by side with athlete meet dates and program due dates — everything in one view.</p>
-      <div class="coming-soon-steps">
-        <strong>What's needed to build this:</strong><br>
-        1. Add <code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code> to <code>.env</code><br>
-        2. Visit <code>/api/calendar/auth</code> to authorize once<br>
-        3. Your calendar events will appear here automatically
-      </div>
-    </div>
+    <div class="page-sub">Google Calendar events alongside athlete meets and program due dates.</div>
+    <div id="gcal-wrap" style="max-width:720px"></div>
   </div>
 </main>
 </div>
@@ -479,6 +525,8 @@
     <div id="db-section" style="display:none">
       <p style="margin:10px 0 8px;font-size:13px;color:var(--text2)">Go to <a href="https://supabase.com" target="_blank">supabase.com</a>, create a free project, go to <strong>Project Settings → API</strong> and paste your keys.</p>
       <code>create table athletes (id uuid primary key default gen_random_uuid(), name text, program text, due_date text, notes text, meets jsonb default '[]', start_date text, end_date text, churn_reason text, is_active boolean default true, created_at timestamptz default now());</code>
+      <p style="margin:10px 0 4px;font-size:13px;color:var(--text2)">Also run this for PR tracking:</p>
+      <code>create table pr_logs (id uuid default gen_random_uuid() primary key, athlete_id uuid references athletes(id) on delete cascade, block text not null, date date not null, squat_pr boolean, bench_pr boolean, dead_pr boolean, squat numeric, bench numeric, dead numeric, notes text, created_at timestamptz default now());</code>
       <div class="setup-inputs">
         <input type="text" id="input-url" placeholder="Project URL  (https://xxxx.supabase.co)"/>
         <input type="text" id="input-key" placeholder="Anon public key  (eyJh...)"/>
@@ -515,12 +563,30 @@
             <button class="btn-primary" style="font-size:12px;padding:6px 14px" onclick="savePrefs()">Save</button>
           </div>
         </div>
-        <div>
+        <div style="margin-bottom:14px">
           <div style="font-size:11px;color:var(--text2);margin-bottom:6px;font-weight:500">Minutes per program</div>
           <div style="display:flex;gap:8px">
             <input type="number" id="pref-mins" min="1" max="120" placeholder="11" style="flex:1;font-size:13px;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-family:inherit"/>
             <button class="btn-primary" style="font-size:12px;padding:6px 14px" onclick="savePrefs()">Save</button>
           </div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:6px;font-weight:500">Client goal (shows as 46/65)</div>
+          <div style="display:flex;gap:8px">
+            <input type="number" id="pref-client-goal" min="1" placeholder="e.g. 65" style="flex:1;font-size:13px;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-family:inherit"/>
+            <button class="btn-primary" style="font-size:12px;padding:6px 14px" onclick="savePrefs()">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="setup-row" style="margin-top:20px;border-top:1px solid var(--border2);padding-top:20px">
+      <div style="width:100%">
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">📝 Developer Notes</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Private notes — saved to the server, only visible here.</div>
+        <textarea id="dev-notes-input" rows="6" oninput="onDevNotesInput()" placeholder="Write anything — ideas, bugs to fix, things to ask about, reminders to yourself…" style="width:100%;box-sizing:border-box;font-size:13px;padding:10px 12px;border:1px solid var(--border2);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit;resize:vertical;line-height:1.6"></textarea>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+          <button class="btn-primary" style="font-size:12px;padding:6px 16px" onclick="saveDevNotes()">Save notes</button>
+          <span id="dev-notes-status" style="font-size:12px;color:var(--text3)"></span>
         </div>
       </div>
     </div>
@@ -541,14 +607,38 @@
       <div class="modal-label">Block / Program name</div>
       <input class="modal-input" id="pr-block" type="text" placeholder="e.g. Peaking Block 3, Offseason Vol..."/>
     </div>
-    <div class="modal-row modal-section">
-      <div style="flex:1"><div class="modal-label">Squat</div><input class="modal-input" id="pr-squat" type="text" placeholder="e.g. Hit a PR at 405"/></div>
-      <div style="flex:1"><div class="modal-label">Bench</div><input class="modal-input" id="pr-bench" type="text" placeholder="e.g. Matched best at 225"/></div>
-      <div style="flex:1"><div class="modal-label">Deadlift</div><input class="modal-input" id="pr-dead" type="text" placeholder="e.g. Pulled 500 clean"/></div>
+    <div class="modal-section">
+      <div class="modal-label" style="margin-bottom:10px">Did they PR?</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:13px;font-weight:500;color:var(--text);width:70px">Squat</span>
+          <div style="display:flex;gap:6px;flex:1">
+            <button id="pr-squat-yes" onclick="setPrToggle('squat','yes')" style="flex:1;padding:7px;border-radius:7px;border:1px solid var(--border2);background:var(--surface2);color:var(--text3);font-size:13px;cursor:pointer">✓ PR</button>
+            <button id="pr-squat-no"  onclick="setPrToggle('squat','no')"  style="flex:1;padding:7px;border-radius:7px;border:1px solid var(--border2);background:var(--surface2);color:var(--text3);font-size:13px;cursor:pointer">✗ No PR</button>
+          </div>
+          <input id="pr-squat" type="number" placeholder="lbs" style="width:70px;margin-left:8px;font-size:13px;padding:6px 8px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);color:var(--text);font-family:inherit"/>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:13px;font-weight:500;color:var(--text);width:70px">Bench</span>
+          <div style="display:flex;gap:6px;flex:1">
+            <button id="pr-bench-yes" onclick="setPrToggle('bench','yes')" style="flex:1;padding:7px;border-radius:7px;border:1px solid var(--border2);background:var(--surface2);color:var(--text3);font-size:13px;cursor:pointer">✓ PR</button>
+            <button id="pr-bench-no"  onclick="setPrToggle('bench','no')"  style="flex:1;padding:7px;border-radius:7px;border:1px solid var(--border2);background:var(--surface2);color:var(--text3);font-size:13px;cursor:pointer">✗ No PR</button>
+          </div>
+          <input id="pr-bench" type="number" placeholder="lbs" style="width:70px;margin-left:8px;font-size:13px;padding:6px 8px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);color:var(--text);font-family:inherit"/>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:13px;font-weight:500;color:var(--text);width:70px">Deadlift</span>
+          <div style="display:flex;gap:6px;flex:1">
+            <button id="pr-dead-yes" onclick="setPrToggle('dead','yes')" style="flex:1;padding:7px;border-radius:7px;border:1px solid var(--border2);background:var(--surface2);color:var(--text3);font-size:13px;cursor:pointer">✓ PR</button>
+            <button id="pr-dead-no"  onclick="setPrToggle('dead','no')"  style="flex:1;padding:7px;border-radius:7px;border:1px solid var(--border2);background:var(--surface2);color:var(--text3);font-size:13px;cursor:pointer">✗ No PR</button>
+          </div>
+          <input id="pr-dead" type="number" placeholder="lbs" style="width:70px;margin-left:8px;font-size:13px;padding:6px 8px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);color:var(--text);font-family:inherit"/>
+        </div>
+      </div>
     </div>
     <div class="modal-section">
-      <div class="modal-label">Notes</div>
-      <textarea class="modal-input" id="pr-notes" placeholder="How'd they do? Any highlights..." style="min-height:60px;resize:vertical"></textarea>
+      <div class="modal-label">Notes (optional)</div>
+      <textarea class="modal-input" id="pr-notes" placeholder="Any highlights, misses, things to adjust..." style="min-height:55px;resize:vertical"></textarea>
     </div>
     <div class="modal-btns">
       <button class="cancel-btn" onclick="closePrModal()">Cancel</button>
@@ -733,6 +823,17 @@
         </div>
       </div>
     </div>
+    <hr class="modal-divider"/>
+    <div class="modal-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div class="modal-label" style="margin-bottom:0">PR History</div>
+        <div style="display:flex;gap:8px">
+          <button class="cancel-btn" style="font-size:12px" onclick="closeModal();openPrModal(modalId)">+ Log block</button>
+          <button class="cancel-btn" style="font-size:12px" onclick="goTo('prcharts',document.getElementById('nav-prcharts'));document.getElementById('prchart-athlete-sel').value=modalId;renderPrCharts();closeModal()">Full history ↗</button>
+        </div>
+      </div>
+      <div id="modal-pr-mini"></div>
+    </div>
     <div class="modal-btns">
       <button class="cancel-btn" onclick="closeModal()">Cancel</button>
       <button class="save-btn" onclick="saveModal()">Save changes</button>
@@ -748,6 +849,8 @@
 <script src="/js/sales.js"></script>
 <script src="/js/hotleads.js"></script>
 <script src="/js/payments.js"></script>
+<script src="/js/stripe.js"></script>
+<script src="/js/calls.js"></script>
 <script src="/js/meets.js"></script>
 <script src="/js/mymeets.js"></script>
 <script src="/js/churn.js"></script>
@@ -756,7 +859,9 @@
 <script src="/js/dashboard.js"></script>
 <script src="/js/bizmetrics.js"></script>
 <script src="/js/prlog.js"></script>
+<script src="/js/prcharts.js"></script>
 <script src="/js/format.js"></script>
+<script src="/js/calendar.js"></script>
 <script src="/js/app.js"></script>
 </body>
 </html>

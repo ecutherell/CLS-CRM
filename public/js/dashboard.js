@@ -110,12 +110,17 @@ function renderDashboard() {
   const MINS_PER_PROGRAM = parseInt(sGet('pref_mins', 11));
   const fmtTime = n => { const h = Math.floor(n * MINS_PER_PROGRAM / 60), m = (n * MINS_PER_PROGRAM) % 60; return h ? h + 'h ' + (m ? m + 'm' : '') : m + 'm'; };
   const dueThisWk = active.filter(a => getStatus(a) === 'due').length;
+  const overdueCount = active.filter(a => getStatus(a) === 'overdue').length;
+  const dueThisWkTotal = dueThisWk + overdueCount;
+
+  const clientGoal = parseInt(localStorage.getItem('pref_client_goal')) || 0;
+  const clientGoalStr = clientGoal ? '<span style="font-size:14px;color:var(--text3);font-weight:400">/' + clientGoal + '</span>' : '';
 
   document.getElementById('dash-stats').innerHTML =
-    '<div class="stat"><div class="stat-label">Active clients</div><div class="stat-val">' + active.length + '</div></div>' +
-    '<div class="stat"><div class="stat-label">Due this week</div><div class="stat-val amber">' + dueThisWk + '</div>' + (dueThisWk ? '<div style="font-size:11px;color:var(--text3);margin-top:4px">~' + fmtTime(dueThisWk) + ' to write</div>' : '') + '</div>' +
+    '<div class="stat"><div class="stat-label">Active clients</div><div class="stat-val">' + active.length + clientGoalStr + '</div></div>' +
+    '<div class="stat"><div class="stat-label">Overdue</div><div class="stat-val red">' + overdueCount + '</div>' + (overdueCount ? '<div style="font-size:11px;color:var(--text3);margin-top:4px">~' + fmtTime(overdueCount) + ' to write</div>' : '') + '</div>' +
+    '<div class="stat"><div class="stat-label">Due this week</div><div class="stat-val amber">' + dueThisWkTotal + '</div>' + (dueThisWkTotal ? '<div style="font-size:11px;color:var(--text3);margin-top:4px">~' + fmtTime(dueThisWkTotal) + ' to write</div>' : '') + '</div>' +
     '<div class="stat"><div class="stat-label">Due next week</div><div class="stat-val" style="color:var(--text2)">' + dueNextWk + '</div>' + (dueNextWk ? '<div style="font-size:11px;color:var(--text3);margin-top:4px">~' + fmtTime(dueNextWk) + ' to write</div>' : '') + '</div>' +
-    (() => { const od = active.filter(a => getStatus(a) === 'overdue').length; return '<div class="stat"><div class="stat-label">Overdue</div><div class="stat-val red">' + od + '</div>' + (od ? '<div style="font-size:11px;color:var(--text3);margin-top:4px">~' + fmtTime(od) + ' to write</div>' : '') + '</div>'; })() +
     '<div class="stat"><div class="stat-label">Athletes in prep</div><div class="stat-val purple">' + meets + '</div></div>' +
     '<div class="stat"><div class="stat-label">Monthly churn <span class="info-tip" data-tipid="monthly">ⓘ</span></div><div class="stat-val" style="color:' + (pct <= 4 ? '#4caf50' : pct <= 7 ? '#8bc34a' : pct <= 11 ? '#ffc107' : pct <= 15 ? '#ff7043' : '#e53935') + '">' + pct + '%</div></div>' +
     '';
@@ -150,19 +155,23 @@ function renderDashboard() {
       }).join('')
     : '<div class="dash-empty">No meets scheduled yet.</div>';
 
+  const odSorted = od.slice(0, 5);
   const dw = active.filter(a => getStatus(a) === 'due').sort((a, b) => {
     if (!!a.priority_day !== !!b.priority_day) return a.priority_day ? -1 : 1;
     const da = getDeadlineDate(a), db = getDeadlineDate(b);
     return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
   });
-  document.getElementById('dash-due').innerHTML = dw.length
-    ? dw.map(a =>
-        '<div class="dash-row"><div><div class="dash-row-name">' + a.name + (a.priority_day ? ' <span style="color:#ffc107;font-size:10px">★</span>' : '') + ' <button onclick="event.stopPropagation();openPrModal(\'' + a.id + '\')" title="PR log" style="background:none;border:1px solid var(--border2);border-radius:4px;padding:1px 5px;font-size:10px;cursor:pointer;color:var(--text3);margin-left:4px">📊</button></div><div class="dash-row-meta">' + (a.program ? (a.program.startsWith('http') ? '<a href="' + a.program + '" target="_blank" onclick="event.stopPropagation()" style="color:var(--blue-text);font-size:12px">Open sheet ↗</a>' : a.program) : '—') + '</div></div>' +
-        '<div style="display:inline-flex;align-items:center;gap:4px;cursor:pointer" title="Click to change due date" onclick="pickDate(\'' + (a.due_date || '') + '\',function(v){confirmUpdateDue(\'' + a.id + '\',v)},event)">' +
-        '<span style="font-size:12px;color:var(--amber-text);font-weight:600">' + deadlineHint(a) + '</span>' +
-        '<span style="font-size:10px;color:var(--text3)">✎</span>' +
-        '</div></div>'
-      ).join('')
+  const dwAll = [...odSorted, ...dw];
+  document.getElementById('dash-due').innerHTML = dwAll.length
+    ? dwAll.map(a => {
+        const isOd = getStatus(a) === 'overdue';
+        return '<div class="dash-row"><div><div class="dash-row-name">' + a.name + (a.priority_day ? ' <span style="color:#ffc107;font-size:10px">★</span>' : '') + ' <button onclick="event.stopPropagation();openPrModal(\'' + a.id + '\')" title="PR log" style="background:none;border:1px solid var(--border2);border-radius:4px;padding:1px 5px;font-size:10px;cursor:pointer;color:var(--text3);margin-left:4px">📊</button></div><div class="dash-row-meta">' + (a.program ? (a.program.startsWith('http') ? '<a href="' + a.program + '" target="_blank" onclick="event.stopPropagation()" style="color:var(--blue-text);font-size:12px">Open sheet ↗</a>' : a.program) : '—') + '</div></div>' +
+          '<div style="display:inline-flex;align-items:center;gap:4px;cursor:pointer" title="Click to change due date" onclick="pickDate(\'' + (a.due_date || '') + '\',function(v){confirmUpdateDue(\'' + a.id + '\',v)},event)">' +
+          (isOd
+            ? '<span class="pill pill-red" style="font-size:10px">' + deadlineHint(a) + ' ✎</span>'
+            : '<span style="font-size:12px;color:var(--amber-text);font-weight:600">' + deadlineHint(a) + '</span><span style="font-size:10px;color:var(--text3)">✎</span>') +
+          '</div></div>';
+      }).join('')
     : '<div class="dash-empty">Nothing due this week.</div>';
 
   const lw = active.filter(a => {

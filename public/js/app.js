@@ -8,9 +8,9 @@ function updateBadges() {
   const cc = athletes.filter(a => !a.is_active).length;
 
   const bd = document.getElementById('badge-due');
-  bd.textContent = overdue || due;
-  bd.style.display = (overdue || due) ? '' : 'none';
-  bd.className = 'nav-badge' + (overdue ? ' ' : 'amber');
+  bd.textContent = overdue;
+  bd.style.display = overdue ? '' : 'none';
+  bd.className = 'nav-badge';
 
   const bm = document.getElementById('badge-meets');
   bm.textContent = meets;
@@ -38,6 +38,7 @@ function renderAll() {
   renderTestimonials();
   renderPayments();
   renderBizMetrics();
+  renderPlannedCalls();
 }
 
 function goTo(page, btn) {
@@ -92,27 +93,54 @@ function updateSbLink() {
 }
 
 function loadPrefs() {
-  const zip = sGet('pref_zip', '');
-  const mins = sGet('pref_mins', 11);
+  const zip = localStorage.getItem('pref_zip') || '';
+  const mins = localStorage.getItem('pref_mins') || 11;
+  const goal = localStorage.getItem('pref_client_goal') || '';
   const zipEl = document.getElementById('pref-zip');
   const minsEl = document.getElementById('pref-mins');
+  const goalEl = document.getElementById('pref-client-goal');
   if (zipEl) zipEl.value = zip;
   if (minsEl) minsEl.value = mins;
+  if (goalEl) goalEl.value = goal;
 }
 
 function savePrefs() {
   const zip = (document.getElementById('pref-zip').value || '').trim();
   const mins = parseInt(document.getElementById('pref-mins').value) || 11;
-  sSet('pref_zip', zip);
-  sSet('pref_mins', mins);
+  const goal = parseInt(document.getElementById('pref-client-goal').value) || 0;
+  if (zip) localStorage.setItem('pref_zip', zip); else localStorage.removeItem('pref_zip');
+  localStorage.setItem('pref_mins', mins);
+  if (goal) localStorage.setItem('pref_client_goal', goal); else localStorage.removeItem('pref_client_goal');
   fetchWeather();
   renderDashboard();
+}
+
+function loadDevNotes() {
+  const el = document.getElementById('dev-notes-input');
+  if (el) el.value = localStorage.getItem('dev_notes') || '';
+}
+
+let _devNoteTimer = null;
+function saveDevNotes() {
+  const el = document.getElementById('dev-notes-input');
+  const status = document.getElementById('dev-notes-status');
+  if (!el) return;
+  localStorage.setItem('dev_notes', el.value);
+  if (status) { status.textContent = '✓ Saved'; setTimeout(() => status.textContent = '', 2000); }
+}
+
+function onDevNotesInput() {
+  const status = document.getElementById('dev-notes-status');
+  if (status) status.textContent = 'Saving…';
+  clearTimeout(_devNoteTimer);
+  _devNoteTimer = setTimeout(saveDevNotes, 1000);
 }
 
 function openSetup() {
   loadNavPrefs();
   loadPrefs();
   updateSbLink();
+  loadDevNotes();
   document.getElementById('setup-overlay').classList.add('open');
 }
 
@@ -188,7 +216,7 @@ const TIP_CONTENT = {
 async function fetchWeather() {
   try {
     let lat = 29.757, lon = -95.498, tz = 'America%2FChicago';
-    const zip = sGet('pref_zip', '');
+    const zip = localStorage.getItem('pref_zip') || '';
     if (zip && /^\d{5}$/.test(zip)) {
       const geo = await fetch('https://api.zippopotam.us/us/' + zip);
       if (geo.ok) {
@@ -215,8 +243,9 @@ async function fetchWeather() {
 // ── Data loading ───────────────────────────────────────────
 async function loadAllData() {
   await loadServerStorage();
-  await Promise.all([loadAthletes(), loadSalesLog(), loadMyMeets(), loadHotLeads()]);
+  await Promise.all([loadAthletes(), loadSalesLog(), loadMyMeets(), loadHotLeads(), loadPrLogs()]);
   renderAll();
+  await loadStripeCachedData();
 }
 
 // ── Init ───────────────────────────────────────────────────

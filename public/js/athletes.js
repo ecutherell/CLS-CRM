@@ -135,6 +135,7 @@ function renderTable() {
           : '<span class="no-meet">No meet</span>')
         : '<span class="no-meet">—</span>') + '</td>' +
       '<td>' + pillHTML(status) + '</td>' +
+      '<td onclick="event.stopPropagation()" style="white-space:nowrap">' + prBlockDots(a.id) + '</td>' +
       '<td onclick="event.stopPropagation()">' + (a.is_active ? '<button class="action-btn churn-btn" onclick="quickChurn(\'' + a.id + '\')" title="Mark as churned">✕</button>' : '') + '</td></tr>';
   });
   if (addOpen) {
@@ -196,6 +197,7 @@ function openModal(id) {
   btn.className = 'churn-toggle-btn' + (isChurned ? ' undo' : '');
   toggleMeetForm(false);
   renderMeetsList(a);
+  renderPrInModal(id);
   document.getElementById('athlete-modal').classList.add('open');
 }
 
@@ -316,6 +318,7 @@ function toggleMeetForm(show) {
     meets.sort((a, b) => daysDiff(a.date) - daysDiff(b.date));
     const sel = document.getElementById('new-meet-pick');
     sel.innerHTML = '<option value="">— Pick an existing meet or enter new below —</option>' +
+      '<option value="__ASK__">❓ I forgot — need to ask them</option>' +
       meets.map((m, i) => '<option value="' + i + '">' + m.name + ' · ' + fmtDay(m.date) + '</option>').join('');
     sel._meets = meets;
     setTimeout(function () { document.getElementById('new-meet-name').focus(); }, 50);
@@ -324,6 +327,14 @@ function toggleMeetForm(show) {
 
 function pickExistingMeet(sel) {
   if (!sel.value) return;
+  if (sel.value === '__ASK__') {
+    const a = athletes.find(x => x.id == modalId);
+    updateAthlete(modalId, { needs_meet_ask: true });
+    renderMeetsList({ ...a, needs_meet_ask: true });
+    toggleMeetForm(false);
+    sel.value = '';
+    return;
+  }
   const m = sel._meets[parseInt(sel.value)];
   if (!m) return;
   document.getElementById('new-meet-name').value = m.name;
@@ -331,21 +342,45 @@ function pickExistingMeet(sel) {
   document.getElementById('new-meet-time').value = m.time || '';
 }
 
+function clearMeetAsk() {
+  const a = athletes.find(x => x.id == modalId);
+  updateAthlete(modalId, { needs_meet_ask: false });
+  renderMeetsList({ ...a, needs_meet_ask: false });
+}
+
+function clearMeetAskById(id) {
+  updateAthlete(id, { needs_meet_ask: false });
+  renderMeetPage();
+}
+
 function renderMeetsList(a) {
   const list = document.getElementById('meets-list');
   const meets = (a.meets || []).slice().sort((x, y) => daysDiff(x.date) - daysDiff(y.date));
+  const askBanner = a.needs_meet_ask
+    ? '<div style="background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:7px;padding:8px 12px;margin-bottom:8px">' +
+        '<div style="font-size:13px;color:var(--amber-text,#b45309);font-weight:600;margin-bottom:4px">❓ Need to ask about meets</div>' +
+        '<div style="font-size:12px;color:var(--text3)">Ask them, then pick or enter their meet below — the reminder clears automatically.</div>' +
+      '</div>'
+    : '';
   if (!meets.length) {
-    list.innerHTML = '<div style="font-size:13px;color:var(--text3);margin-bottom:4px">No meets yet.</div>';
+    list.innerHTML = askBanner + '<div style="font-size:13px;color:var(--text3);margin-bottom:4px">No meets yet.</div>';
     return;
   }
-  list.innerHTML = meets.map((m, i) => {
+  list.innerHTML = askBanner + meets.map((m, i) => {
     const cd = meetCountdown(m.date);
     const past = daysDiff(m.date) < 0;
+    const prepPlanned = !!m.prep_planned;
+    const prepBtn = past ? '' :
+      '<button onclick="togglePrepPlanned(' + i + ')" title="Toggle prep planned" style="font-size:11px;padding:2px 9px;border-radius:5px;border:1px solid var(--border2);background:' +
+      (prepPlanned ? 'rgba(74,222,128,0.12)' : 'var(--surface2)') + ';color:' +
+      (prepPlanned ? 'var(--green-text,#16a34a)' : 'var(--text3)') + ';cursor:pointer;white-space:nowrap;margin-right:4px">' +
+      (prepPlanned ? '✓ Prep planned' : '○ Prep planned') + '</button>';
     return '<div class="meet-item">' +
       '<div class="meet-item-left"><div class="meet-item-name">' + m.name + '</div>' +
       '<div class="meet-item-meta">' + fmtDate(m.date, m.time) + '</div></div>' +
+      '<div style="display:flex;align-items:center;gap:4px">' + prepBtn +
       '<div class="meet-item-cd">' + (past ? '<span style="color:var(--text3)">Past</span>' : (cd ? (typeof cd.val === 'string' ? cd.val : cd.val + ' ' + cd.unit + ' out') : '')) + '</div>' +
-      '<button class="action-btn" onclick="removeMeet(' + i + ')" title="Remove">✕</button></div>';
+      '<button class="action-btn" onclick="removeMeet(' + i + ')" title="Remove">✕</button></div></div>';
   }).join('');
 }
 
@@ -356,12 +391,24 @@ function addMeet() {
   if (!name || !date) { alert('Enter a meet name and date.'); return; }
   const a = athletes.find(x => x.id == modalId);
   const meets = [...(a.meets || []), { name, date, time: time || '' }];
-  updateAthlete(modalId, { meets });
+  // Auto-clear the "need to ask" flag when a meet is added
+  const updates = { meets };
+  if (a.needs_meet_ask) updates.needs_meet_ask = false;
+  updateAthlete(modalId, updates);
   document.getElementById('new-meet-name').value = '';
   document.getElementById('new-meet-date').value = '';
   document.getElementById('new-meet-time').value = '';
   toggleMeetForm(false);
+  renderMeetsList({ ...a, meets, needs_meet_ask: false });
+  renderMeetPage(); // refresh the Meets page ask-list
+}
+
+function togglePrepPlanned(idx) {
+  const a = athletes.find(x => x.id == modalId);
+  const meets = (a.meets || []).map((m, i) => i === idx ? { ...m, prep_planned: !m.prep_planned } : m);
+  updateAthlete(modalId, { meets });
   renderMeetsList({ ...a, meets });
+  renderMeetPage();
 }
 
 function removeMeet(idx) {

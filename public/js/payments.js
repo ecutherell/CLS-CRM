@@ -1,15 +1,10 @@
 function renderPayments() {
+  // Badge is driven by Stripe past_due count (set in stripe.js)
+
+  const body = document.getElementById('payments-body');
+  if (!body) return; // payments-body removed from HTML — nothing to render
+
   const active = athletes.filter(a => a.is_active);
-  const withNotes = active.filter(a => a.payment_note);
-  const overdue = active.filter(a => a.next_payment_date && daysDiff(a.next_payment_date) < 0);
-
-  document.getElementById('payments-stats').innerHTML =
-    '<div class="stat"><div class="stat-label">Standard subscription</div><div class="stat-val green">' + (active.length - withNotes.length) + '</div></div>' +
-    '<div class="stat"><div class="stat-label">Has payment note</div><div class="stat-val amber">' + withNotes.length + '</div></div>' +
-    '<div class="stat"><div class="stat-label">Payment overdue</div><div class="stat-val red">' + overdue.length + '</div></div>';
-
-  const bp = document.getElementById('badge-payments');
-  if (bp) { bp.textContent = overdue.length; bp.style.display = overdue.length ? '' : 'none'; }
 
   function paymentPriority(a) {
     if (!a.next_payment_date && !a.payment_note) return 5; // green (standard, no note)
@@ -30,7 +25,6 @@ function renderPayments() {
     return a.name.localeCompare(b.name);
   });
 
-  const body = document.getElementById('payments-body');
   body.innerHTML = sorted.map(a => {
     const hasDue = a.next_payment_date;
     const diff = hasDue ? daysDiff(a.next_payment_date) : null;
