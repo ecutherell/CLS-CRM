@@ -1,0 +1,42 @@
+name: Supabase Backup
+
+on:
+  schedule:
+    - cron: '0 3 */2 * *'   # every 2 days at 3 AM UTC
+  workflow_dispatch:          # allow manual trigger
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install pg_dump 17
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnupg curl lsb-release
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /usr/share/keyrings/postgresql-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/postgresql-archive-keyring.gpg] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+
+      - name: Run pg_dump backup
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
+          mkdir -p backups
+          pg_dump "$SUPABASE_DB_URL" \
+            --no-password \
+            --format=custom \
+            --file="backups/backup_${TIMESTAMP}.dump"
+          echo "Backup saved: backups/backup_${TIMESTAMP}.dump"
+
+      - name: Upload backup as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-backup-${{ github.run_number }}
+          path: backups/
+          retention-days: 30
