@@ -48,7 +48,7 @@ app.post('/api/data/:key', (req, res) => {
 // Git push endpoint
 app.post('/api/git-push', (req, res) => {
   const msg = (req.body.message || 'Update CRM').replace(/"/g, '\\"').replace(/`/g, '');
-  const cmd = `git add . && git commit -m "${msg}" && git push`;
+  const cmd = `git add . && git commit -m "${msg}" && git push --set-upstream origin main`;
   exec(cmd, { cwd: __dirname }, (err, stdout, stderr) => {
     const nothingNew = (stdout + stderr).includes('nothing to commit');
     if (err && !nothingNew) return res.json({ ok: false, error: stderr || err.message });
