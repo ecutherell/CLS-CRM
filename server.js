@@ -2,6 +2,7 @@ import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { exec } from 'child_process';
 import 'dotenv/config';
 import calendarRouter from './server/routes/calendar.js';
 import remindersRouter from './server/routes/reminders.js';
@@ -42,6 +43,17 @@ app.post('/api/data/:key', (req, res) => {
   data[req.params.key] = req.body;
   writeServerData(data);
   res.json({ ok: true });
+});
+
+// Git push endpoint
+app.post('/api/git-push', (req, res) => {
+  const msg = (req.body.message || 'Update CRM').replace(/"/g, '\\"').replace(/`/g, '');
+  const cmd = `git add . && git commit -m "${msg}" && git push`;
+  exec(cmd, { cwd: __dirname }, (err, stdout, stderr) => {
+    const nothingNew = (stdout + stderr).includes('nothing to commit');
+    if (err && !nothingNew) return res.json({ ok: false, error: stderr || err.message });
+    res.json({ ok: true, output: nothingNew ? 'Nothing new to commit.' : stdout.trim() });
+  });
 });
 
 app.use('/api/stripe', stripeRouter);

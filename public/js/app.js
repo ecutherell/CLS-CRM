@@ -136,6 +136,35 @@ function onDevNotesInput() {
   _devNoteTimer = setTimeout(saveDevNotes, 1000);
 }
 
+async function pushToGitHub() {
+  const msg = (document.getElementById('git-commit-msg').value.trim()) || 'Update CRM';
+  const status = document.getElementById('git-push-status');
+  const btn = document.querySelector('#git-push-status').previousElementSibling.querySelector('button');
+  status.style.color = 'var(--text3)';
+  status.textContent = '⏳ Pushing…';
+  if (btn) btn.disabled = true;
+  try {
+    const res = await fetch('/api/git-push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg }),
+    });
+    const json = await res.json();
+    if (json.ok) {
+      status.style.color = 'var(--green-text,#16a34a)';
+      status.textContent = '✓ ' + (json.output || 'Pushed successfully.');
+      document.getElementById('git-commit-msg').value = '';
+    } else {
+      status.style.color = 'var(--red-text,#e53935)';
+      status.textContent = '✗ ' + (json.error || 'Push failed.');
+    }
+  } catch (e) {
+    status.style.color = 'var(--red-text,#e53935)';
+    status.textContent = '✗ Could not reach server.';
+  }
+  if (btn) btn.disabled = false;
+}
+
 function openSetup() {
   loadNavPrefs();
   loadPrefs();

@@ -590,6 +590,14 @@
         </div>
       </div>
     </div>
+    <div style="margin-top:12px;padding:14px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm)">
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">🐙 Push to GitHub</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="git-commit-msg" placeholder="Commit message (optional)" style="flex:1;font-size:13px;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-family:inherit"/>
+        <button class="btn-primary" style="font-size:12px;padding:6px 16px;white-space:nowrap" onclick="pushToGitHub()">Push</button>
+      </div>
+      <div id="git-push-status" style="font-size:12px;margin-top:8px;color:var(--text3)"></div>
+    </div>
     <div class="setup-row" style="margin-top:12px">
       <button class="btn-secondary" onclick="closeSetup()">Close</button>
     </div>
