@@ -1,4 +1,6 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+/* PWA safe-area insets (notch / home bar) */
+body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);}
 :root{
   --bg:#f5f4f0;--surface:#fff;--surface2:#f0ede8;
   --border:rgba(0,0,0,0.09);--border2:rgba(0,0,0,0.16);
@@ -23,6 +25,8 @@
   --accent:#eeecea;
 }}
 body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh;}
+::placeholder{color:var(--text2);opacity:1;}
+.yt-title-input::placeholder{color:var(--text);opacity:0.55;}
 .shell{display:flex;min-height:100vh;}
 .sidebar{width:var(--sidebar-w);flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:50;transition:transform 0.22s ease;}
 .sidebar-header{padding:1.25rem 1rem 0.75rem;border-bottom:1px solid var(--border);}
@@ -49,7 +53,18 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .setup-trigger:hover{background:var(--surface2);color:var(--text2);}
 .sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:40;}
 .menu-toggle{display:none;position:fixed;top:12px;left:12px;z-index:60;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 9px;cursor:pointer;font-size:18px;line-height:1;}
-@media(max-width:700px){.sidebar{transform:translateX(-100%);}.sidebar.open{transform:translateX(0);}.sidebar-backdrop.open{display:block;}.menu-toggle{display:block;}.main{margin-left:0!important;}}
+/* Mobile top bar */
+.mobile-topbar{display:none;position:fixed;top:0;left:0;right:0;z-index:60;height:52px;background:var(--surface);border-bottom:1px solid var(--border);align-items:center;padding:0 12px;gap:10px;}
+.mobile-topbar-title{font-size:15px;font-weight:700;flex:1;letter-spacing:-0.3px;}
+.menu-toggle-inline{background:none;border:none;cursor:pointer;font-size:20px;padding:6px;color:var(--text);line-height:1;border-radius:var(--radius-sm);}
+@media(max-width:700px){
+  .sidebar{transform:translateX(-100%);top:0;}
+  .sidebar.open{transform:translateX(0);}
+  .sidebar-backdrop.open{display:block;}
+  .menu-toggle{display:none;}/* hide old floating button — replaced by topbar */
+  .mobile-topbar{display:flex;}
+  .main{margin-left:0!important;padding-top:52px;}
+}
 .main{margin-left:var(--sidebar-w);flex:1;min-width:0;}
 .page{display:none;padding:2rem 2rem 4rem;max-width:1000px;}
 .page.active{display:block;}
@@ -165,6 +180,10 @@ td{padding:10px 14px;vertical-align:middle;}
 @media(max-width:640px){.churn-layout{grid-template-columns:1fr;}}
 .churn-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;}
 .churn-card h3{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:1rem;}
+.churn-sort-btns{display:flex;gap:6px;flex-wrap:wrap;}
+.churn-sort-btn{font-size:12px;padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;transition:all 0.15s;}
+.churn-sort-btn:hover{border-color:var(--accent);color:var(--accent);}
+.churn-sort-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
 .churn-rate-big{font-size:48px;font-weight:700;line-height:1;}
 .churn-rate-big.bad{color:var(--red-text);}.churn-rate-big.ok{color:var(--amber-text);}.churn-rate-big.good{color:var(--green-text);}
 .churn-sublabel{font-size:12px;color:var(--text2);margin-top:6px;}
@@ -235,7 +254,87 @@ textarea.modal-input{min-height:70px;resize:vertical;}
 .add-meet-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .empty{text-align:center;padding:3rem 1rem;color:var(--text3);font-size:13px;}
 .loading{text-align:center;padding:2rem;color:var(--text3);font-size:13px;}
-@media(max-width:640px){thead th:nth-child(2),td:nth-child(2),thead th:nth-child(3),td:nth-child(3){display:none;}}
+/* ── Mobile responsive overhaul ─────────────────────────── */
+
+/* Global page padding & top gap for hamburger */
+@media(max-width:700px){
+  .page{padding:1rem 0.875rem 5.5rem;}
+  .main{padding-top:52px;}
+  .page-title{font-size:17px;}
+  .page-sub{font-size:12px;margin-bottom:1.25rem;}
+
+  /* Hamburger button — larger tap target */
+  .menu-toggle{top:calc(10px + env(safe-area-inset-top));left:12px;padding:8px 11px;font-size:20px;line-height:1;border-radius:8px;}
+
+  /* Tables — always horizontally scrollable */
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .athletes-table-wrap table{min-width:480px;}
+
+  /* Athletes table: keep Name, Due Date, Status, Delete only */
+  .athletes-table-wrap thead th:nth-child(2),
+  .athletes-table-wrap td:nth-child(2),
+  .athletes-table-wrap thead th:nth-child(3),
+  .athletes-table-wrap td:nth-child(3),
+  .athletes-table-wrap thead th:nth-child(5),
+  .athletes-table-wrap td:nth-child(5),
+  .athletes-table-wrap thead th:nth-child(7),
+  .athletes-table-wrap td:nth-child(7){display:none;}
+  .sub-text{max-width:180px;}
+
+  /* Stats grid — 2 columns on mobile */
+  .stats{grid-template-columns:repeat(2,1fr);}
+  .stat-val{font-size:22px;}
+  .sales-stat-val{font-size:26px;}
+
+  /* Dash grid already collapses, just reduce gap */
+  .dash-grid{gap:10px;}
+
+  /* Sales log form — single column */
+  .log-row{grid-template-columns:1fr;}
+
+  /* Toolbar */
+  .toolbar{flex-direction:column;align-items:flex-start;gap:8px;}
+  .filters{flex-wrap:wrap;}
+
+  /* Modals — slide up as bottom sheet */
+  .modal-overlay{padding:0;align-items:flex-end;}
+  .modal{border-radius:16px 16px 0 0;max-height:90vh;overflow-y:auto;margin:0;width:100%!important;max-width:100%!important;}
+  .modal-row{grid-template-columns:1fr;}
+  .modal-btns{justify-content:stretch;}
+  .modal-btns button{flex:1;}
+
+  /* Setup overlay — bottom sheet */
+  .setup-overlay{padding:0;align-items:flex-end;}
+  .setup-box{border-radius:16px 16px 0 0;max-height:90vh;overflow-y:auto;max-width:100%;width:100%;}
+
+  /* Meet add form & MM form rows — single column */
+  .add-meet-row{grid-template-columns:1fr;}
+  .mm-form-row{grid-template-columns:1fr;}
+  .mm-stats{grid-template-columns:repeat(2,1fr);}
+
+  /* Meet grid — always single column on small phones */
+  .meet-grid{grid-template-columns:1fr;}
+
+  /* Churn layout gap */
+  .churn-layout{gap:10px;}
+
+  /* Sales/mymeets layouts */
+  .sales-layout{grid-template-columns:1fr;}
+  .mymeets-layout{grid-template-columns:1fr;}
+
+  /* Conversion ring — stack vertically */
+  .conv-ring-wrap{flex-direction:column;align-items:flex-start;}
+
+  /* Tenure stats row — scrollable */
+  .tenure-stats-row{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;}
+
+  /* Button sizes — easier to tap */
+  .btn-primary,.btn-secondary,.add-btn,.save-btn,.cancel-btn{padding:9px 16px;font-size:13px;}
+  .filter-btn{padding:6px 12px;font-size:12px;}
+
+  /* Nav badge positioning */
+  .nav-badge{font-size:10px;padding:1px 5px;}
+}
 .tl-clickable{cursor:pointer;transition:background 0.12s;border-radius:var(--radius-sm);padding:2px 6px;margin:0 -6px;}
 .tl-clickable:hover{background:var(--surface2);}
 .tl-clickable:hover .tl-name::after{content:' — click to edit';font-size:11px;color:var(--text3);font-weight:400;}
@@ -253,3 +352,36 @@ textarea.modal-input{min-height:70px;resize:vertical;}
 .inv-btn{width:28px;height:28px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
 .inv-btn:hover{background:var(--border);}
 .inv-qty{font-size:14px;font-weight:600;min-width:24px;text-align:center;}
+/* Content tracker tables */
+#yt-content .table-wrap-inner,
+#pod-content .table-wrap-inner{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+/* Content tracker edit panel grids */
+.edit-panel-grid-3{display:grid;grid-template-columns:80px 1fr 1fr;gap:10px;}
+.edit-panel-grid-2{display:grid;grid-template-columns:160px 1fr;gap:10px;}
+@media(max-width:700px){
+  .edit-panel-grid-3,.edit-panel-grid-2{grid-template-columns:1fr;gap:8px;}
+}
+/* Birthdays page */
+.birthday-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);gap:10px;}
+.birthday-row:last-child{border-bottom:none;}
+@media(max-width:700px){.birthday-row{flex-wrap:wrap;gap:6px;}}
+/* Dashboard — plan a call add form */
+.calls-add-form{margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;}
+.calls-add-form select{flex:1;}
+.calls-add-form input[type=date]{flex:1;min-width:120px;}
+@media(max-width:700px){.calls-add-form select,.calls-add-form input[type=date]{width:100%;}}
+/* Sales page — payment notes / hot leads row */
+.sales-notes-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;}
+@media(max-width:700px){.sales-notes-grid{grid-template-columns:1fr;}}
+/* Testimonials — 3-col override (CSS beats inline via !important on mobile) */
+.testimonials-3col{grid-template-columns:repeat(3,1fr);}
+@media(max-width:700px){.testimonials-3col{grid-template-columns:1fr!important;}}
+/* PR Charts — roster row */
+.pr-row{display:grid;grid-template-columns:180px 1fr auto auto;gap:12px;align-items:center;border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:6px;}
+@media(max-width:700px){
+  .pr-row{grid-template-columns:1fr auto;grid-template-areas:'name btn' 'dots dots' 'lifts lifts';}
+  .pr-row>div:nth-child(1){grid-area:name;}
+  .pr-row>div:nth-child(2){grid-area:dots;overflow:hidden;}
+  .pr-row>div:nth-child(3){grid-area:lifts;}
+  .pr-row>div:nth-child(4){grid-area:btn;}
+}

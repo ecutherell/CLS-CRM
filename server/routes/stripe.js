@@ -133,8 +133,16 @@ router.get('/customers', async (req, res) => {
     const recentFailed = allInvoices.filter(inv => (inv.status === 'open' || inv.status === 'uncollectible') && inv.attempt_count > 0).sort((a,b)=>b.created-a.created).slice(0,5).map(inv=>mapInvoice(inv,'failed'));
     const recentPayments = [...recentPaid, ...recentFailed].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
 
+    // Monthly revenue totals from all paid invoices — keyed "YYYY-MM"
+    const monthlyRevenue = {};
+    for (const inv of allInvoices) {
+      if (inv.status !== 'paid' || !inv.amount_paid) continue;
+      const key = new Date(inv.created * 1000).toISOString().slice(0, 7); // "2026-04"
+      monthlyRevenue[key] = (monthlyRevenue[key] || 0) + inv.amount_paid / 100;
+    }
+
     // Cache to disk so /cached can serve it instantly on next page load
-    writeCache({ results, recentPayments, savedAt: new Date().toISOString() });
+    writeCache({ results, recentPayments, monthlyRevenue, savedAt: new Date().toISOString() });
     res.json(results);
   } catch (e) {
     res.status(500).json({ error: e.message });

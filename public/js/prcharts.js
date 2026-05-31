@@ -139,8 +139,7 @@ function renderPrCharts() {
 
     const rowBg = lastAllPr ? 'rgba(76,175,80,0.04)' : lastNonePr ? 'rgba(229,57,53,0.04)' : 'transparent';
 
-    return '<div style="display:grid;grid-template-columns:180px 1fr auto auto;gap:12px;align-items:center;' +
-      'background:' + rowBg + ';border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:6px">' +
+    return '<div class="pr-row" style="background:' + rowBg + '">' +
 
       // Name + badge
       '<div>' +

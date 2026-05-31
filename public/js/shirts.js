@@ -21,6 +21,16 @@ function adjustInventory(size, delta) {
   renderShirts();
 }
 
+function toggleShirt(id) {
+  const a = athletes.find(x => String(x.id) === String(id));
+  if (!a) return;
+  const msg = a.tshirt
+    ? 'Remove shirt from ' + a.name + '?'
+    : 'Mark ' + a.name + ' as has shirt?';
+  if (!confirm(msg)) return;
+  updateAthlete(a.id, { tshirt: !a.tshirt });
+}
+
 function renderShirts() {
   const active = athletes.filter(a => a.is_active);
   const hasShirt = active.filter(a => a.tshirt);
@@ -45,7 +55,12 @@ function renderShirts() {
       '<div class="shirt-row">' +
       '<div class="name-wrap" style="flex:1"><div class="avatar" style="' + avStyle(a.id) + '">' + ini(a.name) + '</div>' +
       '<div class="athlete-name">' + a.name + '</div></div>' +
-      (a.tshirt ? '<span class="pill pill-green">✓ Has shirt</span>' : '<span class="pill pill-gray">No shirt</span>') +
+      '<button onclick="toggleShirt(\'' + a.id + '\')" style="' +
+        'padding:5px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;' +
+        (a.tshirt
+          ? 'background:rgba(76,175,80,0.15);color:var(--green-text);border:1px solid var(--green-text)'
+          : 'background:var(--surface2);color:var(--text3);border:1px dashed var(--border2)') +
+        '">' + (a.tshirt ? '✓ Has shirt' : '+ Give shirt') + '</button>' +
       '</div>'
     ).join('');
   }

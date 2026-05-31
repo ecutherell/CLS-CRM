@@ -1,4 +1,5 @@
 let stripeCustomers = [];
+let stripeMonthlyRevenue = {};
 
 function updatePaymentsBadge(pastDueCount) {
   const today = new Date().toISOString().slice(0, 10);
@@ -118,7 +119,9 @@ async function loadStripeCachedData() {
       renderStripeTable();
       updatePaymentsBadge();
     }
+    if (cache.monthlyRevenue) stripeMonthlyRevenue = cache.monthlyRevenue;
     renderStripeStats();
+    renderBizMetrics();
     if (cache.recentPayments) renderRecentPayments(cache.recentPayments);
     if (cache.savedAt) {
       const saved = new Date(cache.savedAt);

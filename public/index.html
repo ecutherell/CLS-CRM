@@ -2,16 +2,35 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Coach CRM"/>
+<meta name="theme-color" content="#1a1917"/>
 <title>Coach CRM</title>
+<link rel="manifest" href="/manifest.json"/>
+<link rel="apple-touch-icon" href="/icons/icon-192.png"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link rel="stylesheet" href="/css/styles.css"/>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+  }
+</script>
 </head>
 <body>
 <input type="date" id="global-date-picker" style="position:fixed;top:50%;left:50%;width:0;height:0;opacity:0;pointer-events:none;z-index:-1"/>
 <div id="meet-ath-popup" style="display:none;position:fixed;z-index:500;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:14px 16px;box-shadow:0 6px 24px rgba(0,0,0,0.4);min-width:200px"></div>
 <div id="rich-tooltip" style="display:none;position:fixed;z-index:400;background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,0.35);pointer-events:none;line-height:2;white-space:nowrap"></div>
+<div class="mobile-topbar">
+  <button class="menu-toggle-inline" onclick="toggleSidebar()">☰</button>
+  <div class="mobile-topbar-title">Coach CRM</div>
+  <div style="display:flex;align-items:center;gap:6px"><span id="mobile-weather-pill"></span></div>
+</div>
 <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
 <div class="sidebar-backdrop" id="backdrop" onclick="toggleSidebar()"></div>
 <div class="shell">
@@ -24,21 +43,26 @@
   <div class="sidebar-nav">
     <div class="nav-label">Overview</div>
     <button class="nav-item active" onclick="goTo('dashboard',this)"><span class="nav-icon">⚡</span>Dashboard<span class="nav-badge" id="badge-due" style="display:none"></span></button>
+    <button id="nav-payments" class="nav-item" onclick="goTo('payments',this)"><span class="nav-icon">💳</span>Payments<span class="nav-badge amber" id="badge-payments" style="display:none"></span></button>
     <div class="nav-label">Coaching</div>
     <button class="nav-item" onclick="goTo('athletes',this)"><span class="nav-icon">🏋️</span>Athletes</button>
     <button id="nav-prcharts" class="nav-item" onclick="goTo('prcharts',this);renderPrCharts()"><span class="nav-icon">📈</span>PR Charts</button>
+    <button id="nav-davidcall" class="nav-item" onclick="goTo('davidcall',this);renderDavidCall()"><span class="nav-icon">📞</span>David Call</button>
     <button id="nav-meets" class="nav-item" onclick="goTo('meets',this)"><span class="nav-icon">🗓️</span>Meets<span class="nav-badge blue" id="badge-meets" style="display:none"></span></button>
     <button id="nav-mymeets" class="nav-item" onclick="goTo('mymeets',this)"><span class="nav-icon">🗓️</span>Meets I'm handling<span class="nav-badge blue" id="badge-mymeets" style="display:none"></span></button>
+    <div class="nav-label">Content</div>
+    <button id="nav-youtube" class="nav-item" onclick="goTo('youtube',this);renderYoutubePage()"><span class="nav-icon">▶️</span>YouTube Videos</button>
+    <button id="nav-podcast" class="nav-item" onclick="goTo('podcast',this);renderPodcastPage()"><span class="nav-icon">🎙️</span>Podcast</button>
+    <button id="nav-shortform" class="nav-item" onclick="goTo('shortform',this);renderShortFormPage()"><span class="nav-icon">📱</span>Short Form</button>
     <div class="nav-label">Business</div>
     <button id="nav-sales" class="nav-item" onclick="goTo('sales',this)"><span class="nav-icon">📊</span>Sales</button>
-    <button id="nav-payments" class="nav-item" onclick="goTo('payments',this)"><span class="nav-icon">💳</span>Payments<span class="nav-badge amber" id="badge-payments" style="display:none"></span></button>
     <button id="nav-churn" class="nav-item" onclick="goTo('churn',this)"><span class="nav-icon">📉</span>Churn<span class="nav-badge" id="badge-churn" style="display:none"></span></button>
     <button id="nav-bizmetrics" class="nav-item" onclick="goTo('bizmetrics',this)"><span class="nav-icon">📈</span>Business Metrics</button>
     <div class="nav-label">Other</div>
     <button id="nav-shirts" class="nav-item" onclick="goTo('shirts',this)"><span class="nav-icon">👕</span>Shirts<span class="nav-badge amber" id="badge-shirts" style="display:none"></span></button>
     <button id="nav-testimonials" class="nav-item" onclick="goTo('testimonials',this)"><span class="nav-icon">🎥</span>Testimonials</button>
     <button id="nav-format" class="nav-item" onclick="goTo('format',this);renderFormatPage()"><span class="nav-icon">📋</span>Format fixes<span class="nav-badge amber" id="badge-format" style="display:none"></span></button>
-    <button id="nav-birthdays" class="nav-item"><span class="nav-icon">🎂</span>Birthdays<span class="nav-soon">Soon</span></button>
+    <button id="nav-birthdays" class="nav-item" onclick="goTo('birthdays',this)"><span class="nav-icon">🎂</span>Birthdays<span class="nav-badge" id="badge-birthdays" style="display:none"></span></button>
     <button id="nav-calendar" class="nav-item" onclick="goTo('calendar',this);initCalendarPage()"><span class="nav-icon">📅</span>Calendar</button>
   </div>
   <div class="sidebar-footer">
@@ -50,14 +74,9 @@
   <div class="page active" id="page-dashboard">
     <div class="page-title">Dashboard</div>
     <div class="page-sub" id="dash-greeting"></div>
+    <div id="dash-birthday-alert" style="display:none;background:rgba(229,57,53,0.08);border:1px solid rgba(229,57,53,0.25);border-radius:var(--radius);padding:0.875rem 1rem;margin-bottom:1.25rem;gap:12px;align-items:center"></div>
     <div class="stats" id="dash-stats"></div>
     <div class="dash-grid">
-      <div class="dash-card" style="display:flex;flex-direction:column">
-        <div class="dash-card-title">🚨 Overdue / Needs Attention ASAP</div>
-        <div class="no-scrollbar" style="overflow-y:auto;max-height:340px;flex:1">
-          <div id="dash-overdue"></div>
-        </div>
-      </div>
       <div class="dash-card" style="display:flex;flex-direction:column">
         <div class="dash-card-title">📅 Due this week</div>
         <div class="no-scrollbar" style="overflow-y:auto;max-height:340px;flex:1">
@@ -72,6 +91,12 @@
           </div>
         </div>
       </div>
+      <div class="dash-card" style="display:flex;flex-direction:column">
+        <div class="dash-card-title">🚨 Overdue / Needs Attention ASAP</div>
+        <div class="no-scrollbar" style="overflow-y:auto;max-height:340px;flex:1">
+          <div id="dash-overdue"></div>
+        </div>
+      </div>
       <div class="dash-card"><div class="dash-card-title">🏆 Upcoming meets</div><div id="dash-meets"></div></div>
       <div class="dash-card" id="dash-low-contact-wrap" style="display:none;flex-direction:column">
         <div class="dash-card-title" style="color:#5c9cf5">💬 Text this week</div>
@@ -81,12 +106,12 @@
       <div class="dash-card" style="display:flex;flex-direction:column">
         <div class="dash-card-title">📞 Plan a call</div>
         <div id="dash-calls" style="flex:1;overflow-y:auto;max-height:280px"></div>
-        <div style="margin-top:10px;display:flex;gap:6px">
-          <select id="call-athlete-sel" style="flex:1;font-size:12px;padding:5px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2)">
+        <div class="calls-add-form">
+          <select id="call-athlete-sel" style="flex:1;min-width:120px;font-size:12px;padding:5px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2)">
             <option value="">— pick athlete —</option>
           </select>
           <input type="date" id="call-date" style="font-size:12px;padding:5px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2)"/>
-          <button onclick="addPlannedCall()" style="padding:5px 12px;border-radius:6px;border:none;background:var(--accent);color:#fff;font-size:12px;cursor:pointer">Add</button>
+          <button onclick="addPlannedCall()" style="padding:5px 12px;border-radius:6px;border:none;background:var(--accent);color:#fff;font-size:12px;cursor:pointer;white-space:nowrap">Add</button>
         </div>
       </div>
     </div>
@@ -128,7 +153,7 @@
       </div>
       <button class="add-btn" onclick="toggleAdd()">+ Add athlete</button>
     </div>
-    <div class="table-wrap">
+    <div class="table-wrap athletes-table-wrap">
       <table>
         <thead><tr>
           <th onclick="sortBy('name')">Athlete <span class="sort-icon" id="sort-name"></span></th>
@@ -218,7 +243,7 @@
       </div>
     </div>
     <div class="sales-card" style="margin-top:16px"><h3>History</h3><div class="log-list" id="sales-log"></div></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+    <div class="sales-notes-grid">
       <div class="sales-card">
         <h3>Payment notes</h3>
         <div id="payment-notes-list" style="margin-top:10px"></div>
@@ -256,7 +281,8 @@
         </div>
         <div id="stripe-progress-label" style="font-size:11px;color:var(--text3);margin-top:4px">Fetching customers…</div>
       </div>
-      <table class="athlete-table" style="width:100%">
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+      <table class="athlete-table" style="width:100%;min-width:480px">
         <thead>
           <tr>
             <th>Stripe name</th>
@@ -268,6 +294,7 @@
         </thead>
         <tbody id="stripe-body"></tbody>
       </table>
+      </div>
     </div>
     <div id="stripe-recent-payments" style="margin-top:8px;padding-top:4px;border-top:1px solid var(--border2)"></div>
   </div>
@@ -279,8 +306,51 @@
       <div class="churn-card"><h3>Monthly churn rate</h3><div class="churn-rate-big" id="churn-rate-big">—</div><div class="churn-sublabel" id="churn-sublabel"></div><div class="churn-formula">Churned this month ÷ active at start of month</div></div>
       <div class="churn-card"><h3>Churn by reason</h3><div class="reason-bars" id="reason-bars"><div style="font-size:13px;color:var(--text3)">No data yet.</div></div></div>
     </div>
-    <div class="churn-card" style="margin-bottom:16px"><h3>Tenure stats</h3><div id="churn-tenure-stats" style="display:flex;gap:2rem;margin-top:10px"></div></div>
-    <div class="churn-card"><h3>Churn history</h3><div class="churn-timeline" id="churn-timeline"><div style="font-size:13px;color:var(--text3);padding:1rem 0">No churned clients yet.</div></div></div>
+    <div class="churn-card" style="margin-bottom:16px"><h3>Tenure stats</h3><div class="tenure-stats-row" style="margin-top:10px"><div id="churn-tenure-stats" style="display:flex;gap:2rem;min-width:max-content"></div></div></div>
+    <div class="churn-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+        <h3 style="margin:0">Churn history</h3>
+        <div class="churn-sort-btns">
+          <button class="churn-sort-btn active" id="csort-date"    onclick="setChurnSort('date',this)">📅 Drop date</button>
+          <button class="churn-sort-btn"        id="csort-tenure"  onclick="setChurnSort('tenure',this)">⏱ Time with me</button>
+          <button class="churn-sort-btn"        id="csort-name"    onclick="setChurnSort('name',this)">🔤 Name</button>
+        </div>
+      </div>
+      <div class="churn-timeline" id="churn-timeline"><div style="font-size:13px;color:var(--text3);padding:1rem 0">No churned clients yet.</div></div>
+    </div>
+  </div>
+  <!-- YouTube Videos -->
+  <div class="page" id="page-youtube">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:0.25rem">
+      <div class="page-title" style="margin-bottom:0">YouTube Videos</div>
+      <div id="yt-drive-btn"></div>
+    </div>
+    <div class="page-sub">Track your production pipeline — from script to published. Click a row to edit details.</div>
+    <div class="dash-card" style="margin-top:1.5rem">
+      <div id="yt-content"></div>
+    </div>
+  </div>
+  <!-- Podcast -->
+  <div class="page" id="page-podcast">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:0.25rem">
+      <div class="page-title" style="margin-bottom:0">Podcast</div>
+      <div id="pod-drive-btn"></div>
+    </div>
+    <div class="page-sub">Track your episode production pipeline — from outline to published. Click a row to edit details.</div>
+    <div class="dash-card" style="margin-top:1.5rem">
+      <div id="pod-content"></div>
+    </div>
+  </div>
+  <!-- Short Form -->
+  <div class="page" id="page-shortform">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:0.25rem">
+      <div class="page-title" style="margin-bottom:0">Short Form</div>
+      <div id="sf-drive-btn"></div>
+    </div>
+    <div class="page-sub">Track Reels, TikToks, and Shorts — coming soon.</div>
+    <div class="dash-card" style="margin-top:1.5rem">
+      <div id="sf-content"></div>
+    </div>
   </div>
   <!-- Shirts -->
   <div class="page" id="page-shirts">
@@ -313,7 +383,7 @@
     <div class="page-title">Testimonials</div>
     <div class="page-sub">Track which athletes have recorded a testimonial video.</div>
     <div class="stats" id="testimonials-stats"></div>
-    <div class="shirts-layout" style="grid-template-columns:1fr 1fr 1fr">
+    <div class="shirts-layout testimonials-3col">
       <div class="shirts-card">
         <h3>Done</h3>
         <div id="testimonials-done"></div>
@@ -376,6 +446,11 @@
         <div id="bm-close-sub" style="font-size:12px;color:var(--text3)">Sales closes ÷ calls this month</div>
         <div style="margin-top:14px;height:80px"><canvas id="chart-close"></canvas></div>
       </div>
+      <div class="dash-card">
+        <div class="dash-card-title">⏱ Hourly Rate</div>
+        <div id="bm-hourly" style="font-size:38px;font-weight:700;color:var(--text);margin:8px 0 4px">—</div>
+        <div id="bm-hourly-sub" style="font-size:12px;color:var(--text3)">Last month's revenue ÷ 160 hrs (40h × 4wks)</div>
+      </div>
       <div class="dash-card" style="opacity:0.55">
         <div class="dash-card-title">💰 Monthly Revenue</div>
         <div style="font-size:13px;color:var(--text2);margin-top:8px">Gross + net profit this month. Needs Stripe or a monthly rate field.</div>
@@ -432,6 +507,34 @@
           <div style="font-size:12px;color:var(--text3);margin-bottom:1rem">Of clients who started each month, what % are still here after 1, 3, 6, and 12 months? — is your retention getting better or worse over time?</div>
           <div id="cohort-table-wrap"></div>
         </div>
+      </div>
+    </div>
+  </div>
+  <!-- Birthdays -->
+  <div class="page" id="page-birthdays">
+    <div class="page-title">Birthdays</div>
+    <div class="page-sub">Track athlete birthdays and keep your phone calendar up to date.</div>
+    <div class="stats" id="bday-stats"></div>
+    <div class="dash-card" style="margin-top:0">
+      <div id="bday-list"><div class="loading">Loading…</div></div>
+    </div>
+  </div>
+  <!-- David Call -->
+  <div class="page" id="page-davidcall">
+    <div class="page-title">David Call</div>
+    <div class="page-sub">Weekly mentorship notes — jot your topics before the call, then archive when done.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:4px" id="davidcall-layout">
+      <div class="dash-card" style="display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">📝 This week's topics</div>
+          <span id="davidcall-date" style="font-size:12px;color:var(--text3)"></span>
+        </div>
+        <textarea id="davidcall-pending" placeholder="Write your questions and topics here before the call..." style="flex:1;min-height:260px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 12px;font-size:13px;color:var(--text);font-family:inherit;resize:vertical;line-height:1.6" oninput="saveDavidPending()"></textarea>
+        <button onclick="archiveDavidCall()" style="width:100%;padding:10px;border-radius:var(--radius-sm);border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer">✓ Call done — archive &amp; start fresh</button>
+      </div>
+      <div class="dash-card">
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px">📚 Past calls</div>
+        <div id="davidcall-history"><div class="dash-empty">No past calls yet.</div></div>
       </div>
     </div>
   </div>
@@ -516,17 +619,27 @@
   <div class="setup-box">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <h3 style="margin:0">Settings</h3>
+      <div style="display:flex;gap:8px;align-items:center">
       <a id="sb-link" href="https://supabase.com/dashboard" target="_blank" onclick="updateSbLink()" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:6px 12px;border-radius:20px;background:#1c1c1c;border:1px solid #3ecf8e44;color:#3ecf8e;text-decoration:none">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="#3ecf8e"><path d="M11.9 1.036c-.015-.986-1.26-1.41-1.874-.637L.764 12.05C.33 12.6.738 13.4 1.43 13.4h8.592l-.028 9.569c.016.986 1.26 1.409 1.874.636l9.262-11.653c.424-.546.017-1.352-.676-1.352h-8.59z"/></svg>
         Supabase
       </a>
+      <a href="https://github.com/ecutherell/CLS-CRM" target="_blank" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:6px 12px;border-radius:20px;background:#1c1c1c;border:1px solid rgba(255,255,255,0.15);color:#e6edf3;text-decoration:none">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="#e6edf3"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        GitHub
+      </a>
+      </div>
     </div>
     <button onclick="document.getElementById('db-section').style.display=document.getElementById('db-section').style.display==='none'?'block':'none'" style="width:100%;text-align:left;padding:10px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;font-weight:500;color:var(--text);cursor:pointer;margin-bottom:4px">🗄 Database connection</button>
     <div id="db-section" style="display:none">
       <p style="margin:10px 0 8px;font-size:13px;color:var(--text2)">Go to <a href="https://supabase.com" target="_blank">supabase.com</a>, create a free project, go to <strong>Project Settings → API</strong> and paste your keys.</p>
-      <code>create table athletes (id uuid primary key default gen_random_uuid(), name text, program text, due_date text, notes text, meets jsonb default '[]', start_date text, end_date text, churn_reason text, is_active boolean default true, created_at timestamptz default now());</code>
+      <code>create table athletes (id uuid primary key default gen_random_uuid(), name text, program text, due_date text, notes text, meets jsonb default '[]', start_date text, end_date text, churn_reason text, is_active boolean default true, birthday text, birthday_on_phone boolean default false, created_at timestamptz default now());</code>
+      <p style="margin:10px 0 4px;font-size:13px;color:var(--text2)">If you already have the athletes table, add the birthday columns:</p>
+      <code>alter table athletes add column if not exists birthday text; alter table athletes add column if not exists birthday_on_phone boolean default false;</code>
       <p style="margin:10px 0 4px;font-size:13px;color:var(--text2)">Also run this for PR tracking:</p>
       <code>create table pr_logs (id uuid default gen_random_uuid() primary key, athlete_id uuid references athletes(id) on delete cascade, block text not null, date date not null, squat_pr boolean, bench_pr boolean, dead_pr boolean, squat numeric, bench numeric, dead numeric, notes text, created_at timestamptz default now());</code>
+      <p style="margin:10px 0 4px;font-size:13px;color:var(--text2)">And this for app settings (required for GitHub Pages hosting):</p>
+      <code>create table if not exists app_settings (key text primary key, value jsonb); alter table app_settings enable row level security; create policy "service role full access" on app_settings using (true) with check (true);</code>
       <div class="setup-inputs">
         <input type="text" id="input-url" placeholder="Project URL  (https://xxxx.supabase.co)"/>
         <input type="text" id="input-key" placeholder="Anon public key  (eyJh...)"/>
@@ -547,6 +660,9 @@
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin-bottom:6px;cursor:pointer"><input type="checkbox" id="snav-churn" onchange="saveNavPrefs()" style="accent-color:var(--accent)"/> Churn</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin-bottom:12px;cursor:pointer"><input type="checkbox" id="snav-bizmetrics" onchange="saveNavPrefs()" style="accent-color:var(--accent)"/> Business Metrics</label>
         <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-bottom:8px">Other</div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin-bottom:6px;cursor:pointer"><input type="checkbox" id="snav-youtube" onchange="saveNavPrefs()" style="accent-color:var(--accent)"/> YouTube Videos</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin-bottom:6px;cursor:pointer"><input type="checkbox" id="snav-podcast" onchange="saveNavPrefs()" style="accent-color:var(--accent)"/> Podcast</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin-bottom:6px;cursor:pointer"><input type="checkbox" id="snav-shortform" onchange="saveNavPrefs()" style="accent-color:var(--accent)"/> Short Form</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin-bottom:6px;cursor:pointer"><input type="checkbox" id="snav-shirts" onchange="saveNavPrefs()" style="accent-color:var(--accent)"/> Shirts</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin-bottom:6px;cursor:pointer"><input type="checkbox" id="snav-testimonials" onchange="saveNavPrefs()" style="accent-color:var(--accent)"/> Testimonials</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin-bottom:6px;cursor:pointer"><input type="checkbox" id="snav-birthdays" onchange="saveNavPrefs()" style="accent-color:var(--accent)"/> Birthdays</label>
@@ -570,10 +686,21 @@
             <button class="btn-primary" style="font-size:12px;padding:6px 14px" onclick="savePrefs()">Save</button>
           </div>
         </div>
-        <div>
+        <div style="margin-bottom:14px">
           <div style="font-size:11px;color:var(--text2);margin-bottom:6px;font-weight:500">Client goal (shows as 46/65)</div>
           <div style="display:flex;gap:8px">
             <input type="number" id="pref-client-goal" min="1" placeholder="e.g. 65" style="flex:1;font-size:13px;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-family:inherit"/>
+            <button class="btn-primary" style="font-size:12px;padding:6px 14px" onclick="savePrefs()">Save</button>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:6px;font-weight:500">💰 Coaching rate</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="font-size:13px;color:var(--text3)">$</span>
+            <input type="number" id="pref-rate-amount" min="1" placeholder="e.g. 165" style="flex:1;font-size:13px;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-family:inherit"/>
+            <span style="font-size:13px;color:var(--text3);white-space:nowrap">every</span>
+            <input type="number" id="pref-rate-weeks" min="1" max="52" placeholder="4" style="width:52px;font-size:13px;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-family:inherit"/>
+            <span style="font-size:13px;color:var(--text3)">wks</span>
             <button class="btn-primary" style="font-size:12px;padding:6px 14px" onclick="savePrefs()">Save</button>
           </div>
         </div>
@@ -590,13 +717,39 @@
         </div>
       </div>
     </div>
-    <div style="margin-top:12px;padding:14px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm)">
-      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">🐙 Push to GitHub</div>
+    <div id="git-section" style="margin-top:12px;padding:14px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="font-size:13px;font-weight:600;color:var(--text)">🐙 Push to GitHub</div>
+        <div id="git-last-push" style="font-size:11px;color:var(--text3)">Checking…</div>
+      </div>
       <div style="display:flex;gap:8px;align-items:center">
         <input type="text" id="git-commit-msg" placeholder="Commit message (optional)" style="flex:1;font-size:13px;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-family:inherit"/>
         <button class="btn-primary" style="font-size:12px;padding:6px 16px;white-space:nowrap" onclick="pushToGitHub()">Push</button>
       </div>
       <div id="git-push-status" style="font-size:12px;margin-top:8px;color:var(--text3)"></div>
+    </div>
+    <!-- SMS Notifications -->
+    <div id="sms-section" class="setup-row" style="flex-direction:column;align-items:flex-start;gap:10px;margin-top:4px">
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px">📱 Daily Text Reminder</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:4px">Texts you each morning with overdue &amp; due athletes. Requires Twilio keys in <code style="font-size:11px;background:var(--surface2);padding:1px 5px;border-radius:4px">.env</code>.</div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer">
+          <input type="checkbox" id="sms-enabled" onchange="saveSmsSettings()" style="accent-color:var(--accent);width:15px;height:15px"/>
+          Enable daily text
+        </label>
+        <div style="display:flex;align-items:center;gap:6px">
+          <label style="font-size:12px;color:var(--text3)">Send at</label>
+          <select id="sms-hour" onchange="saveSmsSettings()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:13px">
+            <option value="6">6 AM</option>
+            <option value="7">7 AM</option>
+            <option value="8" selected>8 AM</option>
+            <option value="9">9 AM</option>
+            <option value="10">10 AM</option>
+          </select>
+        </div>
+        <button onclick="sendTestSms()" style="padding:5px 14px;border-radius:7px;border:1px solid var(--border2);background:none;color:var(--text2);font-size:12px;cursor:pointer">Send test now</button>
+      </div>
+      <div id="sms-status" style="font-size:12px;color:var(--text3)"></div>
     </div>
     <div class="setup-row" style="margin-top:12px">
       <button class="btn-secondary" onclick="closeSetup()">Close</button>
@@ -724,6 +877,26 @@
         <option>Other</option>
       </select>
     </div>
+    <div class="modal-section">
+      <div class="modal-label">🎂 Birthday</div>
+      <div style="display:flex;gap:6px">
+        <select id="m-bday-month" class="modal-input">
+          <option value="">— Month —</option>
+          <option value="01">January</option><option value="02">February</option><option value="03">March</option>
+          <option value="04">April</option><option value="05">May</option><option value="06">June</option>
+          <option value="07">July</option><option value="08">August</option><option value="09">September</option>
+          <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+        </select>
+        <select id="m-bday-day" class="modal-input" style="max-width:100px">
+          <option value="">Day</option>
+          <option value="01">1</option><option value="02">2</option><option value="03">3</option><option value="04">4</option><option value="05">5</option><option value="06">6</option><option value="07">7</option><option value="08">8</option><option value="09">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option><option value="26">26</option><option value="27">27</option><option value="28">28</option><option value="29">29</option><option value="30">30</option><option value="31">31</option>
+        </select>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;color:var(--text2);margin-top:10px">
+        <input type="checkbox" id="m-birthday-phone" style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent)"/>
+        📱 Added to phone birthday app
+      </label>
+    </div>
     <div class="modal-section"><div class="modal-label">Notes</div><textarea class="modal-input" id="m-notes" placeholder="Injury notes, cues, anything..."></textarea></div>
     <div class="modal-section">
       <div class="modal-label" style="margin-bottom:8px">Meets</div>
@@ -849,27 +1022,30 @@
   </div>
 </div>
 
-<script src="/js/storage.js"></script>
-<script src="/js/state.js"></script>
-<script src="/js/utils.js"></script>
-<script src="/js/supabase-client.js"></script>
-<script src="/js/athletes.js"></script>
-<script src="/js/sales.js"></script>
-<script src="/js/hotleads.js"></script>
-<script src="/js/payments.js"></script>
-<script src="/js/stripe.js"></script>
-<script src="/js/calls.js"></script>
-<script src="/js/meets.js"></script>
-<script src="/js/mymeets.js"></script>
-<script src="/js/churn.js"></script>
-<script src="/js/shirts.js"></script>
-<script src="/js/testimonials.js"></script>
-<script src="/js/dashboard.js"></script>
-<script src="/js/bizmetrics.js"></script>
-<script src="/js/prlog.js"></script>
-<script src="/js/prcharts.js"></script>
-<script src="/js/format.js"></script>
-<script src="/js/calendar.js"></script>
-<script src="/js/app.js"></script>
+<script src="/js/storage.js?v=3"></script>
+<script src="/js/state.js?v=2"></script>
+<script src="/js/utils.js?v=2"></script>
+<script src="/js/supabase-client.js?v=2"></script>
+<script src="/js/athletes.js?v=2"></script>
+<script src="/js/sales.js?v=2"></script>
+<script src="/js/hotleads.js?v=2"></script>
+<script src="/js/payments.js?v=2"></script>
+<script src="/js/stripe.js?v=2"></script>
+<script src="/js/calls.js?v=2"></script>
+<script src="/js/meets.js?v=2"></script>
+<script src="/js/mymeets.js?v=2"></script>
+<script src="/js/churn.js?v=2"></script>
+<script src="/js/shirts.js?v=3"></script>
+<script src="/js/testimonials.js?v=2"></script>
+<script src="/js/birthdays.js?v=2"></script>
+<script src="/js/dashboard.js?v=3"></script>
+<script src="/js/bizmetrics.js?v=2"></script>
+<script src="/js/prlog.js?v=2"></script>
+<script src="/js/prcharts.js?v=2"></script>
+<script src="/js/content.js?v=2"></script>
+<script src="/js/davidcall.js?v=1"></script>
+<script src="/js/format.js?v=2"></script>
+<script src="/js/calendar.js?v=2"></script>
+<script src="/js/app.js?v=4"></script>
 </body>
 </html>

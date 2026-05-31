@@ -50,10 +50,14 @@ function renderChurnPage() {
       const mid = Math.floor(sorted2.length / 2);
       const median = sorted2.length % 2 ? sorted2[mid] : Math.round((sorted2[mid - 1] + sorted2[mid]) / 2);
       const fmt = m => m < 12 ? m + ' mo' : Math.floor(m / 12) + 'y ' + (m % 12 ? m % 12 + 'mo' : '');
+      const totalEver = athletes.length;
+      const activeCount = athletes.filter(a => a.is_active).length;
       tenureEl.innerHTML =
         '<div><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text2);margin-bottom:4px">Average tenure</div><div style="font-size:24px;font-weight:700;color:var(--text)">' + fmt(avg) + '</div><div style="font-size:11px;color:var(--text3);margin-top:2px">across ' + withTenure.length + ' churned clients</div></div>' +
         '<div style="width:1px;background:var(--border);margin:0 8px"></div>' +
         '<div><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text2);margin-bottom:4px">Median tenure</div><div style="font-size:24px;font-weight:700;color:var(--text)">' + fmt(median) + '</div><div style="font-size:11px;color:var(--text3);margin-top:2px">half stayed longer, half shorter</div></div>' +
+        '<div style="width:1px;background:var(--border);margin:0 8px"></div>' +
+        '<div><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text2);margin-bottom:4px">Total clients worked with</div><div style="font-size:24px;font-weight:700;color:var(--text)">' + totalEver + '</div><div style="font-size:11px;color:var(--text3);margin-top:2px">' + activeCount + ' active · ' + (totalEver - activeCount) + ' churned</div></div>' +
         (needsUpdate ? '<div style="width:1px;background:var(--border);margin:0 8px"></div><div style="display:flex;align-items:center"><div><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--amber-text);margin-bottom:4px">Needs update</div><div style="font-size:24px;font-weight:700;color:var(--amber-text)">' + needsUpdate + '</div><div style="font-size:11px;color:var(--text3);margin-top:2px">athletes missing accurate dates</div></div></div>' : '');
     } else {
       tenureEl.innerHTML = '<div style="font-size:13px;color:var(--text3)">No data yet — add start and end dates to churned clients.</div>';
@@ -62,13 +66,43 @@ function renderChurnPage() {
 
   const churnedAthletes = athletes.filter(a => !a.is_active);
   const reEnrolled = athletes.filter(a => a.is_active && (a.coaching_periods || []).length > 0);
+
+  // Helper: get the most recent end_date for an athlete in the history list
+  function _historyEndDate(a) {
+    if (!a.is_active) return a.end_date || '';
+    const cp = (a.coaching_periods || []);
+    return cp.length ? (cp[cp.length - 1].end_date || '') : '';
+  }
+
+  // Helper: total months ever coached (all periods + current active tenure if re-enrolled)
+  function _historyTenureMs(a) {
+    let ms = 0;
+    (a.coaching_periods || []).forEach(p => {
+      if (p.start_date && p.end_date) ms += new Date(p.end_date + 'T12:00:00') - new Date(p.start_date + 'T12:00:00');
+    });
+    if (!a.is_active && a.start_date && a.end_date) {
+      ms += new Date(a.end_date + 'T12:00:00') - new Date(a.start_date + 'T12:00:00');
+    } else if (a.is_active && a.start_date && !(a.coaching_periods || []).length) {
+      ms += Date.now() - new Date(a.start_date + 'T12:00:00');
+    }
+    return ms;
+  }
+
   const history = [...churnedAthletes, ...reEnrolled].sort((a, b) => {
-    const ap = (a.coaching_periods || []);
-    const bp = (b.coaching_periods || []);
-    const aDate = !a.is_active ? (a.end_date || '0') : (ap.length ? ap[ap.length - 1].end_date || '0' : '0');
-    const bDate = !b.is_active ? (b.end_date || '0') : (bp.length ? bp[bp.length - 1].end_date || '0' : '0');
-    return new Date(bDate) - new Date(aDate);
+    if (_churnSort === 'name') {
+      return (a.name || '').localeCompare(b.name || '');
+    }
+    if (_churnSort === 'tenure') {
+      return _historyTenureMs(b) - _historyTenureMs(a); // longest first
+    }
+    // default: 'date' — most recent drop date first
+    return new Date(_historyEndDate(b) || '0') - new Date(_historyEndDate(a) || '0');
   });
+
+  // Sync active button state (in case renderChurnPage called without clicking a button)
+  document.querySelectorAll('.churn-sort-btn').forEach(b => b.classList.remove('active'));
+  const activeBtn = document.getElementById('csort-' + _churnSort);
+  if (activeBtn) activeBtn.classList.add('active');
   document.getElementById('churn-timeline').innerHTML = history.length
     ? history.map(a => {
         if (!a.is_active) {
@@ -89,6 +123,15 @@ function renderChurnPage() {
         }
       }).join('')
     : '<div style="font-size:13px;color:var(--text3);padding:1rem 0">No churned clients yet.</div>';
+}
+
+let _churnSort = 'date';
+
+function setChurnSort(val, btn) {
+  _churnSort = val;
+  document.querySelectorAll('.churn-sort-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderChurnPage();
 }
 
 let churnActionId = null;

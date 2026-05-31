@@ -19,6 +19,8 @@ function updateBadges() {
   const bc = document.getElementById('badge-churn');
   bc.style.display = 'none';
 
+  updateBirthdayBadge();
+
   const upcoming = myMeets.filter(m => !mmIsPast(m.date)).length;
   const bmm = document.getElementById('badge-mymeets');
   bmm.textContent = upcoming;
@@ -34,11 +36,13 @@ function renderAll() {
   renderChurnPage();
   renderSalesPage();
   renderMyMeets();
+  renderContentPage();
   renderShirts();
   renderTestimonials();
   renderPayments();
   renderBizMetrics();
   renderPlannedCalls();
+  renderBirthdaysPage();
 }
 
 function goTo(page, btn) {
@@ -57,7 +61,7 @@ function toggleSidebar() {
   document.getElementById('backdrop').classList.toggle('open');
 }
 
-const NAV_ITEMS = ['meets','mymeets','sales','payments','churn','bizmetrics','shirts','testimonials','birthdays','calendar'];
+const NAV_ITEMS = ['meets','mymeets','youtube','podcast','shortform','sales','payments','churn','bizmetrics','shirts','testimonials','birthdays','calendar'];
 
 function loadNavPrefs() {
   const prefs = sGet('nav_prefs', {});
@@ -93,24 +97,34 @@ function updateSbLink() {
 }
 
 function loadPrefs() {
-  const zip = localStorage.getItem('pref_zip') || '';
-  const mins = localStorage.getItem('pref_mins') || 11;
-  const goal = localStorage.getItem('pref_client_goal') || '';
-  const zipEl = document.getElementById('pref-zip');
-  const minsEl = document.getElementById('pref-mins');
-  const goalEl = document.getElementById('pref-client-goal');
-  if (zipEl) zipEl.value = zip;
-  if (minsEl) minsEl.value = mins;
-  if (goalEl) goalEl.value = goal;
+  const zip       = localStorage.getItem('pref_zip') || '';
+  const mins      = localStorage.getItem('pref_mins') || 11;
+  const goal      = localStorage.getItem('pref_client_goal') || '';
+  const rateAmt   = localStorage.getItem('pref_rate_amount') || '';
+  const rateWeeks = localStorage.getItem('pref_rate_weeks') || '4';
+  const zipEl   = document.getElementById('pref-zip');
+  const minsEl  = document.getElementById('pref-mins');
+  const goalEl  = document.getElementById('pref-client-goal');
+  const rateAmtEl   = document.getElementById('pref-rate-amount');
+  const rateWeeksEl = document.getElementById('pref-rate-weeks');
+  if (zipEl)   zipEl.value   = zip;
+  if (minsEl)  minsEl.value  = mins;
+  if (goalEl)  goalEl.value  = goal;
+  if (rateAmtEl)   rateAmtEl.value   = rateAmt;
+  if (rateWeeksEl) rateWeeksEl.value = rateWeeks;
 }
 
 function savePrefs() {
-  const zip = (document.getElementById('pref-zip').value || '').trim();
-  const mins = parseInt(document.getElementById('pref-mins').value) || 11;
-  const goal = parseInt(document.getElementById('pref-client-goal').value) || 0;
+  const zip       = (document.getElementById('pref-zip').value || '').trim();
+  const mins      = parseInt(document.getElementById('pref-mins').value) || 11;
+  const goal      = parseInt(document.getElementById('pref-client-goal').value) || 0;
+  const rateAmt   = parseFloat(document.getElementById('pref-rate-amount').value) || 0;
+  const rateWeeks = parseFloat(document.getElementById('pref-rate-weeks').value) || 4;
   if (zip) localStorage.setItem('pref_zip', zip); else localStorage.removeItem('pref_zip');
   localStorage.setItem('pref_mins', mins);
-  if (goal) localStorage.setItem('pref_client_goal', goal); else localStorage.removeItem('pref_client_goal');
+  if (goal)    localStorage.setItem('pref_client_goal', goal);   else localStorage.removeItem('pref_client_goal');
+  if (rateAmt) localStorage.setItem('pref_rate_amount', rateAmt); else localStorage.removeItem('pref_rate_amount');
+  localStorage.setItem('pref_rate_weeks', rateWeeks);
   fetchWeather();
   renderDashboard();
 }
@@ -136,6 +150,24 @@ function onDevNotesInput() {
   _devNoteTimer = setTimeout(saveDevNotes, 1000);
 }
 
+async function loadGitStatus() {
+  const el = document.getElementById('git-last-push');
+  if (!el) return;
+  try {
+    const res = await fetch('/api/git-status');
+    const json = await res.json();
+    if (json.ok) {
+      const d = new Date(json.date);
+      const when = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
+                   ' at ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      el.innerHTML = 'Last push: <strong style="color:var(--text2)">' + when + '</strong>' +
+                     ' <span style="color:var(--text3)">· ' + json.message + '</span>';
+    } else {
+      el.textContent = 'No commits yet';
+    }
+  } catch { el.textContent = ''; }
+}
+
 async function pushToGitHub() {
   const msg = (document.getElementById('git-commit-msg').value.trim()) || 'Update CRM';
   const status = document.getElementById('git-push-status');
@@ -154,6 +186,7 @@ async function pushToGitHub() {
       status.style.color = 'var(--green-text,#16a34a)';
       status.textContent = '✓ ' + (json.output || 'Pushed successfully.');
       document.getElementById('git-commit-msg').value = '';
+      loadGitStatus();
     } else {
       status.style.color = 'var(--red-text,#e53935)';
       status.textContent = '✗ ' + (json.error || 'Push failed.');
@@ -165,11 +198,67 @@ async function pushToGitHub() {
   if (btn) btn.disabled = false;
 }
 
+function loadSmsSettings() {
+  const settings = sGet('sms_settings', {});
+  const cb = document.getElementById('sms-enabled');
+  const sel = document.getElementById('sms-hour');
+  if (cb) cb.checked = !!settings.enabled;
+  if (sel) sel.value = settings.send_hour ?? 8;
+}
+
+function saveSmsSettings() {
+  const enabled = document.getElementById('sms-enabled').checked;
+  const send_hour = parseInt(document.getElementById('sms-hour').value);
+  sSet('sms_settings', { enabled, send_hour });
+  const status = document.getElementById('sms-status');
+  if (status) {
+    status.textContent = enabled
+      ? '✓ Will text you daily at ' + document.getElementById('sms-hour').options[document.getElementById('sms-hour').selectedIndex].text
+      : 'Daily text disabled.';
+    status.style.color = enabled ? 'var(--green-text)' : 'var(--text3)';
+  }
+}
+
+async function sendTestSms() {
+  const status = document.getElementById('sms-status');
+  if (status) { status.textContent = '⏳ Sending…'; status.style.color = 'var(--text3)'; }
+  try {
+    const res = await fetch('/api/sms/test', { method: 'POST' });
+    const json = await res.json();
+    if (json.ok) {
+      const parts = [];
+      if (json.overdue)     parts.push(json.overdue + ' overdue');
+      if (json.dueToday)    parts.push(json.dueToday + ' due today');
+      if (json.dueTomorrow) parts.push(json.dueTomorrow + ' due tomorrow');
+      if (status) {
+        status.textContent = '✓ Sent! ' + (parts.length ? '(' + parts.join(', ') + ')' : '(all clear)');
+        status.style.color = 'var(--green-text)';
+      }
+    } else {
+      if (status) { status.textContent = '✗ ' + (json.error || 'Failed'); status.style.color = 'var(--red-text,#e53935)'; }
+    }
+  } catch {
+    if (status) { status.textContent = '✗ Could not reach server'; status.style.color = 'var(--red-text,#e53935)'; }
+  }
+}
+
 function openSetup() {
   loadNavPrefs();
   loadPrefs();
   updateSbLink();
   loadDevNotes();
+  loadSmsSettings();
+  // Git push and SMS only work on the local Node server
+  const gitEl = document.getElementById('git-section');
+  const smsEl = document.getElementById('sms-section');
+  if (IS_LOCAL) {
+    if (gitEl) gitEl.style.display = '';
+    if (smsEl) smsEl.style.display = '';
+    loadGitStatus();
+  } else {
+    if (gitEl) gitEl.style.display = 'none';
+    if (smsEl) smsEl.style.display = 'none';
+  }
   document.getElementById('setup-overlay').classList.add('open');
 }
 
@@ -258,14 +347,13 @@ async function fetchWeather() {
     const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon + '&daily=precipitation_sum&timezone=' + tz + '&forecast_days=1');
     const json = await res.json();
     const rain = json.daily && json.daily.precipitation_sum && json.daily.precipitation_sum[0];
-    const pill = document.getElementById('weather-pill');
-    if (rain > 0) {
-      pill.textContent = '🌧 Rain today';
-      pill.className = 'weather-rain';
-    } else {
-      pill.textContent = '☀️ No rain';
-      pill.className = 'weather-clear';
-    }
+    const setPill = (el, rain) => {
+      if (!el) return;
+      if (rain > 0) { el.textContent = '🌧 Rain'; el.className = 'weather-rain'; }
+      else          { el.textContent = '☀️ Clear'; el.className = 'weather-clear'; }
+    };
+    setPill(document.getElementById('weather-pill'), rain);
+    setPill(document.getElementById('mobile-weather-pill'), rain);
   } catch (e) {}
 }
 

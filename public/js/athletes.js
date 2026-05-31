@@ -18,7 +18,7 @@ async function addAthlete(name, program, start) {
 }
 
 async function updateAthlete(id, fields) {
-  athletes = athletes.map(a => a.id === id ? { ...a, ...fields } : a);
+  athletes = athletes.map(a => String(a.id) === String(id) ? { ...a, ...fields } : a);
   renderAll();
   if (sb) {
     const { error } = await sb.from('athletes').update(fields).eq('id', id);
@@ -140,14 +140,15 @@ function renderTable() {
   });
   if (addOpen) {
     html +=
-      '<tr class="add-row">' +
-      '<td><input type="text" id="new-name" placeholder="Athlete name" onclick="event.stopPropagation()"/></td>' +
-      '<td><input type="text" id="new-program" placeholder="Program name" onclick="event.stopPropagation()"/></td>' +
-      '<td><input type="date" id="new-start" class="date-input" value="' + TODAY.toISOString().slice(0, 10) + '" onclick="event.stopPropagation()"/></td>' +
-      '<td></td><td></td>' +
-      '<td style="display:flex;gap:6px">' +
+      '<tr class="add-row"><td colspan="8" onclick="event.stopPropagation()">' +
+      '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">' +
+      '<input type="text" id="new-name" placeholder="Athlete name" onclick="event.stopPropagation()" style="flex:2;min-width:140px"/>' +
+      '<input type="text" id="new-program" placeholder="Program name" onclick="event.stopPropagation()" style="flex:2;min-width:140px"/>' +
+      '<input type="date" id="new-start" class="date-input" value="' + TODAY.toISOString().slice(0, 10) + '" onclick="event.stopPropagation()" style="flex:1;min-width:130px"/>' +
+      '<div style="display:flex;gap:6px;flex-shrink:0">' +
       '<button class="save-btn" onclick="event.stopPropagation();submitAdd()">Save</button>' +
-      '<button class="cancel-btn" onclick="event.stopPropagation();toggleAdd()">Cancel</button></td></tr>';
+      '<button class="cancel-btn" onclick="event.stopPropagation();toggleAdd()">Cancel</button>' +
+      '</div></div></td></tr>';
   }
   if (!html) html = '<tr><td colspan="6" class="empty">No athletes match this filter.</td></tr>';
   body.innerHTML = html;
@@ -184,6 +185,11 @@ function openModal(id) {
   document.getElementById('m-testimonial').checked = a.testimonial || false;
   document.getElementById('m-out-of-state').checked = a.out_of_state || false;
   document.getElementById('m-source').value = a.source || '';
+  const _bday = a.birthday || '';
+  const [_bm, _bd] = _bday.includes('-') ? _bday.split('-') : ['', ''];
+  document.getElementById('m-bday-month').value = _bm || '';
+  document.getElementById('m-bday-day').value   = _bd || '';
+  document.getElementById('m-birthday-phone').checked = a.birthday_on_phone || false;
   document.getElementById('m-payment-note').value = a.payment_note || '';
   document.getElementById('m-next-payment').value = a.next_payment_date || '';
   document.getElementById('m-start').oninput = function () {
@@ -226,6 +232,12 @@ function saveModal() {
     testimonial: document.getElementById('m-testimonial').checked,
     out_of_state: document.getElementById('m-out-of-state').checked,
     source: document.getElementById('m-source').value || null,
+    birthday: (function() {
+      const m = document.getElementById('m-bday-month').value;
+      const d = document.getElementById('m-bday-day').value;
+      return m && d ? m + '-' + d : null;
+    })(),
+    birthday_on_phone: document.getElementById('m-birthday-phone').checked,
     payment_note: document.getElementById('m-payment-note').value.trim() || null,
     next_payment_date: document.getElementById('m-next-payment').value || null,
   });

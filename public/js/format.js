@@ -2,13 +2,13 @@ const FORMAT_KEY = 'format_flags';
 
 function getFormatFlags() {
   try {
-    const raw = localStorage.getItem(FORMAT_KEY);
-    return new Set(raw ? JSON.parse(raw) : []);
+    const raw = sGet(FORMAT_KEY, []);
+    return new Set(Array.isArray(raw) ? raw : []);
   } catch { return new Set(); }
 }
 
 function saveFormatFlags(set) {
-  localStorage.setItem(FORMAT_KEY, JSON.stringify([...set]));
+  sSet(FORMAT_KEY, [...set]);
 }
 
 function toggleFormatFlag(id) {

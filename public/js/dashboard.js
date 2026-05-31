@@ -122,21 +122,44 @@ function renderDashboard() {
     '<div class="stat"><div class="stat-label">Due this week</div><div class="stat-val amber">' + dueThisWkTotal + '</div>' + (dueThisWkTotal ? '<div style="font-size:11px;color:var(--text3);margin-top:4px">~' + fmtTime(dueThisWkTotal) + ' to write</div>' : '') + '</div>' +
     '<div class="stat"><div class="stat-label">Due next week</div><div class="stat-val" style="color:var(--text2)">' + dueNextWk + '</div>' + (dueNextWk ? '<div style="font-size:11px;color:var(--text3);margin-top:4px">~' + fmtTime(dueNextWk) + ' to write</div>' : '') + '</div>' +
     '<div class="stat"><div class="stat-label">Athletes in prep</div><div class="stat-val purple">' + meets + '</div></div>' +
-    '<div class="stat"><div class="stat-label">Monthly churn <span class="info-tip" data-tipid="monthly">ⓘ</span></div><div class="stat-val" style="color:' + (pct <= 4 ? '#4caf50' : pct <= 7 ? '#8bc34a' : pct <= 11 ? '#ffc107' : pct <= 15 ? '#ff7043' : '#e53935') + '">' + pct + '%</div></div>' +
+    (function() {
+      const rateAmt   = parseFloat(localStorage.getItem('pref_rate_amount')) || 0;
+      const rateWeeks = parseFloat(localStorage.getItem('pref_rate_weeks'))  || 4;
+      if (!rateAmt) return '<div class="stat" style="cursor:pointer" onclick="openSetup()" title="Set your rate in Settings"><div class="stat-label">Current rate</div><div class="stat-val" style="font-size:16px;color:var(--text3)">Set rate →</div></div>';
+      const perMonth = Math.round(rateAmt * (52 / rateWeeks) / 12);
+      const perYear  = Math.round(rateAmt * (52 / rateWeeks));
+      return '<div class="stat"><div class="stat-label">Current rate</div>' +
+        '<div class="stat-val green" style="font-size:22px">$' + rateAmt.toLocaleString() + '</div>' +
+        '<div style="font-size:11px;color:var(--text3);margin-top:4px">every ' + rateWeeks + ' wks · ~$' + perMonth.toLocaleString() + '/mo · $' + perYear.toLocaleString() + '/yr</div>' +
+        '</div>';
+    })() +
     '';
 
-  const od = active.filter(a => getStatus(a) === 'overdue').sort((a, b) => {
+  const od = active.filter(a => {
+    if (getStatus(a) === 'overdue') return true;
+    if (getStatus(a) === 'due') {
+      const dl = getDeadlineDate(a);
+      if (!dl) return false;
+      return Math.round((dl - TODAY) / 86400000) <= 1;
+    }
+    return false;
+  }).sort((a, b) => {
+    const aOd = getStatus(a) === 'overdue', bOd = getStatus(b) === 'overdue';
+    if (aOd !== bOd) return aOd ? -1 : 1; // overdue always first
     if (!!a.priority_day !== !!b.priority_day) return a.priority_day ? -1 : 1;
     const da = getDeadlineDate(a), db = getDeadlineDate(b);
     return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
   });
   document.getElementById('dash-overdue').innerHTML = od.length
-    ? od.slice(0, 5).map(a =>
-        '<div class="dash-row"><div><div class="dash-row-name">' + a.name + '</div><div class="dash-row-meta">' + (a.program ? (a.program.startsWith('http') ? '<a href="' + a.program + '" target="_blank" onclick="event.stopPropagation()" style="color:var(--blue-text);font-size:12px">Open sheet ↗</a>' : a.program) : '—') + '</div></div>' +
-        '<div style="display:inline-flex;align-items:center;gap:4px;cursor:pointer" title="Click to change due date" onclick="pickDate(\'' + (a.due_date || '') + '\',function(v){confirmUpdateDue(\'' + a.id + '\',v)},event)">' +
-        '<span class="pill pill-red" style="font-size:10px">' + deadlineHint(a) + ' ✎</span>' +
-        '</div></div>'
-      ).join('')
+    ? od.slice(0, 8).map(a => {
+        const isOd = getStatus(a) === 'overdue';
+        const pill = isOd
+          ? '<span class="pill pill-red" style="font-size:10px">' + deadlineHint(a) + ' ✎</span>'
+          : '<span class="pill" style="font-size:10px;background:rgba(255,112,67,0.15);color:#ff7043;border:1px solid #ff7043">' + deadlineHint(a) + ' ✎</span>';
+        return '<div class="dash-row"><div><div class="dash-row-name">' + a.name + '</div><div class="dash-row-meta">' + (a.program ? (a.program.startsWith('http') ? '<a href="' + a.program + '" target="_blank" onclick="event.stopPropagation()" style="color:var(--blue-text);font-size:12px">Open sheet ↗</a>' : a.program) : '—') + '</div></div>' +
+          '<div style="display:inline-flex;align-items:center;gap:4px;cursor:pointer" title="Click to change due date" onclick="pickDate(\'' + (a.due_date || '') + '\',function(v){confirmUpdateDue(\'' + a.id + '\',v)},event)">' +
+          pill + '</div></div>';
+      }).join('')
     : '<div class="dash-empty">All programs up to date ✓</div>';
 
   const meetMap = {};
@@ -156,7 +179,8 @@ function renderDashboard() {
     : '<div class="dash-empty">No meets scheduled yet.</div>';
 
   const odSorted = od.slice(0, 5);
-  const dw = active.filter(a => getStatus(a) === 'due').sort((a, b) => {
+  const odIds = new Set(odSorted.map(a => a.id));
+  const dw = active.filter(a => getStatus(a) === 'due' && !odIds.has(a.id)).sort((a, b) => {
     if (!!a.priority_day !== !!b.priority_day) return a.priority_day ? -1 : 1;
     const da = getDeadlineDate(a), db = getDeadlineDate(b);
     return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
@@ -221,4 +245,24 @@ function renderDashboard() {
       '<div class="dash-row"><div class="dash-row-name">Closes this month</div><strong style="color:var(--green-text)">' + mCloses + '</strong></div>' +
       '<div class="dash-row"><div class="dash-row-name">Conversion rate</div><strong style="color:' + (conv >= 30 ? 'var(--green-text)' : conv >= 15 ? 'var(--amber-text)' : 'var(--red-text)') + '">' + conv + '%</strong></div>'
     : '<div class="dash-empty">No sales logged this month yet.</div>';
+
+  // Birthday alert
+  const bdayAlertEl = document.getElementById('dash-birthday-alert');
+  if (bdayAlertEl && typeof bdayMMDD === 'function') {
+    const todayBdays = athletes.filter(a => a.is_active && a.birthday === bdayMMDD());
+    if (todayBdays.length) {
+      bdayAlertEl.style.display = 'flex';
+      const names = todayBdays.map(a => a.name).join(', ');
+      bdayAlertEl.innerHTML =
+        '<span style="font-size:26px;flex-shrink:0">🎂</span>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-weight:600;font-size:14px;color:var(--text)">Birthday' + (todayBdays.length > 1 ? 's' : '') + ' today!</div>' +
+          '<div style="font-size:13px;color:var(--text2);margin-top:2px">' + names + '</div>' +
+        '</div>' +
+        '<button onclick="goTo(\'birthdays\',document.getElementById(\'nav-birthdays\'))" ' +
+          'style="font-size:12px;padding:5px 14px;border-radius:6px;border:1px solid rgba(229,57,53,0.35);background:none;color:var(--red-text);cursor:pointer;flex-shrink:0;font-weight:500">View →</button>';
+    } else {
+      bdayAlertEl.style.display = 'none';
+    }
+  }
 }

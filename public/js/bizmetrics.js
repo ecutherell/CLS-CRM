@@ -265,6 +265,26 @@ function renderBizMetrics() {
     closeSub.textContent = 'No sales calls logged this month';
   }
 
+  // Hourly Rate — last month's total collected (all invoices) ÷ 160 hrs (40h/wk × 4 wks)
+  const hourlyEl = document.getElementById('bm-hourly');
+  const hourlySub = document.getElementById('bm-hourly-sub');
+  if (hourlyEl) {
+    const lmDate  = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lmKey   = lmDate.getFullYear() + '-' + String(lmDate.getMonth() + 1).padStart(2, '0');
+    const lmLabel = MONTHS[lmDate.getMonth()].slice(0, 3) + " '" + String(lmDate.getFullYear()).slice(2);
+    const lmRevenue = (typeof stripeMonthlyRevenue !== 'undefined' ? stripeMonthlyRevenue : {})[lmKey] || 0;
+    if (lmRevenue > 0) {
+      const hourly = Math.round(lmRevenue / 160);
+      hourlyEl.textContent = '$' + hourly;
+      hourlyEl.style.color = hourly >= 75 ? '#4caf50' : hourly >= 40 ? '#ffc107' : 'var(--text2)';
+      if (hourlySub) hourlySub.textContent = '$' + Math.round(lmRevenue).toLocaleString() + ' in ' + lmLabel + ' ÷ 160 hrs';
+    } else {
+      hourlyEl.textContent = '—';
+      hourlyEl.style.color = 'var(--text2)';
+      if (hourlySub) hourlySub.textContent = 'No ' + lmLabel + ' data — refresh Stripe on Payments page';
+    }
+  }
+
   // ── Charts ──────────────────────────────────────────────
   if (typeof Chart === 'undefined') return;
 

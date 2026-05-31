@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "WebSearch",
+      "WebFetch(domain:developer.spotify.com)",
+      "WebFetch(domain:den.dev)",
+      "Bash(node generate-icons.js)",
+      "Bash(node -e \"const fs=require\\('fs'\\); const data=JSON.parse\\(fs.readFileSync\\('C:/Users/ecuth/OneDrive/Desktop/Claude/CLS Crm/server-data.json','utf8'\\)\\); console.log\\(JSON.stringify\\(data.nav_prefs, null, 2\\)\\);\")"
     ]
   }
 }
