@@ -1,8 +1,21 @@
 async function loadAthletes() {
-  if (!sb) return;
+  if (!sb) {
+    // Fall back to cached athletes if no Supabase connection
+    const cached = localStorage.getItem('athletes_cache');
+    if (cached) { try { athletes = JSON.parse(cached); } catch {} }
+    return;
+  }
   const { data, error } = await sb.from('athletes').select('*').order('name');
-  if (error) { setSS('err'); return; }
+  if (error) {
+    setSS('err');
+    // Fall back to cache on error
+    const cached = localStorage.getItem('athletes_cache');
+    if (cached) { try { athletes = JSON.parse(cached); } catch {} }
+    return;
+  }
   athletes = data.map(a => ({ ...a, meets: a.meets || [], is_active: a.is_active !== false }));
+  // Save a fresh cache every successful load
+  try { localStorage.setItem('athletes_cache', JSON.stringify(athletes)); } catch {}
 }
 
 async function addAthlete(name, program, start) {

@@ -6,9 +6,9 @@
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<meta name="apple-mobile-web-app-title" content="Coach CRM"/>
+<meta name="apple-mobile-web-app-title" content="CLS CRM"/>
 <meta name="theme-color" content="#1a1917"/>
-<title>Coach CRM</title>
+<title>CLS CRM</title>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icons/icon-192.png"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -16,9 +16,18 @@
 <link rel="stylesheet" href="css/styles.css"/>
 <script>
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
-    });
+    const isLocal = ['localhost','127.0.0.1'].includes(location.hostname);
+    if (isLocal) {
+      // On localhost: unregister any old service worker so it never blocks refreshes
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(r => r.unregister());
+      });
+    } else {
+      // On GitHub Pages: register normally for offline support
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+      });
+    }
   }
 </script>
 </head>
@@ -28,7 +37,7 @@
 <div id="rich-tooltip" style="display:none;position:fixed;z-index:400;background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,0.35);pointer-events:none;line-height:2;white-space:nowrap"></div>
 <div class="mobile-topbar">
   <button class="menu-toggle-inline" onclick="toggleSidebar()">☰</button>
-  <div class="mobile-topbar-title">Coach CRM</div>
+  <div class="mobile-topbar-title">CLS CRM</div>
   <div style="display:flex;align-items:center;gap:6px"><span id="mobile-weather-pill"></span></div>
 </div>
 <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
@@ -36,7 +45,7 @@
 <div class="shell">
 <nav class="sidebar" id="sidebar">
   <div class="sidebar-header">
-    <div class="sidebar-logo">Coach CRM</div>
+    <div class="sidebar-logo">CLS CRM</div>
     <div class="sidebar-sub"><span id="date-short"></span><span id="weather-pill"></span></div>
     <div class="sidebar-sync"><span class="sync-dot" id="sync-dot"></span><span id="sync-label">Not connected</span></div>
   </div>
@@ -64,6 +73,8 @@
     <button id="nav-format" class="nav-item" onclick="goTo('format',this);renderFormatPage()"><span class="nav-icon">📋</span>Format fixes<span class="nav-badge amber" id="badge-format" style="display:none"></span></button>
     <button id="nav-birthdays" class="nav-item" onclick="goTo('birthdays',this)"><span class="nav-icon">🎂</span>Birthdays<span class="nav-badge" id="badge-birthdays" style="display:none"></span></button>
     <button id="nav-calendar" class="nav-item" onclick="goTo('calendar',this);initCalendarPage()"><span class="nav-icon">📅</span>Calendar</button>
+    <button id="nav-officepurchase" class="nav-item" onclick="goTo('officepurchase',this);renderOfficePage()"><span class="nav-icon">🛒</span>Monthly Office Purchase</button>
+    <button id="nav-meetweekend" class="nav-item" onclick="goTo('meetweekend',this);renderMeetWeekendPage()"><span class="nav-icon">🏋️</span>Meet Weekend</button>
   </div>
   <div class="sidebar-footer">
     <button class="setup-trigger" onclick="openSetup()"><span style="font-size:14px">⚙️</span>Settings</button>
@@ -75,12 +86,12 @@
     <div class="page-title">Dashboard</div>
     <div class="page-sub" id="dash-greeting"></div>
     <div id="dash-birthday-alert" style="display:none;background:rgba(229,57,53,0.08);border:1px solid rgba(229,57,53,0.25);border-radius:var(--radius);padding:0.875rem 1rem;margin-bottom:1.25rem;gap:12px;align-items:center"></div>
-    <div class="stats" id="dash-stats"></div>
+    <div class="stats" id="dash-stats"><div class="loading" style="padding:1rem">Loading…</div></div>
     <div class="dash-grid">
       <div class="dash-card" style="display:flex;flex-direction:column">
         <div class="dash-card-title">📅 Due this week</div>
         <div class="no-scrollbar" style="overflow-y:auto;max-height:340px;flex:1">
-          <div id="dash-due"></div>
+          <div id="dash-due"><div class="loading">Loading…</div></div>
           <div id="dash-due-last-wrap" style="display:none">
             <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin:14px 0 6px">Last week</div>
             <div id="dash-due-last"></div>
@@ -94,15 +105,15 @@
       <div class="dash-card" style="display:flex;flex-direction:column">
         <div class="dash-card-title">🚨 Overdue / Needs Attention ASAP</div>
         <div class="no-scrollbar" style="overflow-y:auto;max-height:340px;flex:1">
-          <div id="dash-overdue"></div>
+          <div id="dash-overdue"><div class="loading">Loading…</div></div>
         </div>
       </div>
-      <div class="dash-card"><div class="dash-card-title">🏆 Upcoming meets</div><div id="dash-meets"></div></div>
+      <div class="dash-card"><div class="dash-card-title">🏆 Upcoming meets</div><div id="dash-meets"><div class="loading">Loading…</div></div></div>
       <div class="dash-card" id="dash-low-contact-wrap" style="display:none;flex-direction:column">
         <div class="dash-card-title" style="color:#5c9cf5">💬 Text this week</div>
         <div class="no-scrollbar" style="overflow-y:auto;max-height:340px;flex:1"><div id="dash-low-contact"></div></div>
       </div>
-      <div class="dash-card"><div class="dash-card-title">📊 Sales this month</div><div id="dash-sales"></div></div>
+      <div class="dash-card"><div class="dash-card-title">📊 Sales this month</div><div id="dash-sales"><div class="loading">Loading…</div></div></div>
       <div class="dash-card" style="display:flex;flex-direction:column">
         <div class="dash-card-title">📞 Plan a call</div>
         <div id="dash-calls" style="flex:1;overflow-y:auto;max-height:280px"></div>
@@ -517,6 +528,22 @@
     <div class="stats" id="bday-stats"></div>
     <div class="dash-card" style="margin-top:0">
       <div id="bday-list"><div class="loading">Loading…</div></div>
+    </div>
+  </div>
+  <!-- Meet Weekend -->
+  <div class="page" id="page-meetweekend">
+    <div class="page-title">Meet Weekend</div>
+    <div class="page-sub">Track who you've messaged about taking the weekend off. Start a new meet each time.</div>
+    <div style="max-width:680px;margin-top:8px" id="meetwknd-body">
+      <div class="dash-empty">Loading…</div>
+    </div>
+  </div>
+  <!-- Monthly Office Purchase -->
+  <div class="page" id="page-officepurchase">
+    <div class="page-title">Monthly Office Purchase</div>
+    <div class="page-sub">Plan one thing to get for the office each month — May through December.</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;max-width:700px" id="office-months-list">
+      <div class="dash-empty">Loading…</div>
     </div>
   </div>
   <!-- David Call -->
@@ -1044,6 +1071,8 @@
 <script src="js/prcharts.js?v=2"></script>
 <script src="js/content.js?v=2"></script>
 <script src="js/davidcall.js?v=1"></script>
+<script src="js/officepurchase.js?v=1"></script>
+<script src="js/meetweekend.js?v=1"></script>
 <script src="js/format.js?v=2"></script>
 <script src="js/calendar.js?v=2"></script>
 <script src="js/app.js?v=4"></script>
