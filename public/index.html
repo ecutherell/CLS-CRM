@@ -174,55 +174,22 @@
       <div id="sheets-metrics-content"></div>
     </div>
 
-    <div class="sales-grid" id="sales-stats"></div>
-    <div class="sales-layout">
-      <div class="sales-card">
-        <h3>Conversion rate</h3>
-        <div class="conv-ring-wrap">
-          <div class="conv-ring">
-            <svg width="90" height="90" viewBox="0 0 90 90">
-              <circle cx="45" cy="45" r="36" fill="none" stroke="var(--surface2)" stroke-width="10"/>
-              <circle id="conv-arc" cx="45" cy="45" r="36" fill="none" stroke="var(--green-text)" stroke-width="10" stroke-linecap="round" stroke-dasharray="226" stroke-dashoffset="226"/>
-            </svg>
-            <div class="conv-ring-label"><div class="conv-ring-pct" id="conv-pct">0%</div><div class="conv-ring-sub">close rate</div></div>
-          </div>
-          <div class="conv-detail" id="conv-detail"><span style="color:var(--text3)">Log entries to see your rate.</span></div>
-        </div>
-      </div>
-      <div class="sales-card">
-        <h3>Log entry</h3>
-        <div class="log-form">
-          <div class="log-row">
-            <div><div style="font-size:11px;color:var(--text2);margin-bottom:4px">Date</div><input type="date" class="log-input" id="log-date"/></div>
-            <div><div style="font-size:11px;color:var(--text2);margin-bottom:4px">Calls</div><input type="number" class="log-input" id="log-calls" min="0" placeholder="0"/></div>
-          </div>
-          <div><div style="font-size:11px;color:var(--text2);margin-bottom:4px">Closes (signed)</div><input type="number" class="log-input" id="log-closes" min="0" placeholder="0"/></div>
-          <button class="save-btn" style="align-self:flex-start" onclick="addSalesEntry()">Add entry</button>
-        </div>
-      </div>
-    </div>
-    <div class="sales-card" style="margin-top:16px"><h3>History</h3><div class="log-list" id="sales-log"></div></div>
-    <div class="sales-notes-grid">
-      <div class="sales-card">
-        <h3>Payment notes</h3>
-        <div id="payment-notes-list" style="margin-top:10px"></div>
-      </div>
-      <div class="sales-card">
-        <h3>Hot leads 🔥</h3>
-        <div style="font-size:12px;color:var(--text3);margin-bottom:10px">People close to signing — reminder to follow up.</div>
-        <div id="hot-leads-list"></div>
-        <div id="hot-lead-form" style="display:none;flex-direction:column;gap:8px;margin-top:10px">
-          <input type="text" class="modal-input" id="hl-name" placeholder="Name"/>
-          <input type="text" class="modal-input" id="hl-contact" placeholder="Instagram / phone"/>
-          <input type="text" class="modal-input" id="hl-notes" placeholder="Notes (e.g. interested in online)"/>
-          <div style="display:flex;gap:8px">
-            <button class="save-btn" onclick="addHotLead()">Add</button>
-            <button class="cancel-btn" onclick="toggleHotLeadForm(false)">Cancel</button>
-          </div>
-        </div>
-        <button class="save-btn" id="hl-add-btn" onclick="toggleHotLeadForm(true)" style="margin-top:10px;font-size:12px">+ Add lead</button>
-      </div>
-    </div>
+    <!-- hidden elements kept for dashboard sales stats compatibility -->
+    <div id="sales-stats" style="display:none"></div>
+    <div id="sales-log" style="display:none"></div>
+    <div id="payment-notes-list" style="display:none"></div>
+    <div id="hot-leads-list" style="display:none"></div>
+    <div id="hot-lead-form" style="display:none"></div>
+    <div id="conv-pct" style="display:none"></div>
+    <div id="conv-arc" style="display:none"></div>
+    <div id="conv-detail" style="display:none"></div>
+    <input id="log-date" style="display:none"/>
+    <input id="log-calls" style="display:none"/>
+    <input id="log-closes" style="display:none"/>
+    <input id="hl-name" style="display:none"/>
+    <input id="hl-contact" style="display:none"/>
+    <input id="hl-notes" style="display:none"/>
+    <button id="hl-add-btn" style="display:none"></button>
   </div>
   <!-- Payments -->
   <div class="page" id="page-payments">
