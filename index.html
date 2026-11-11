@@ -783,6 +783,19 @@
   </div>
 </div>
 
+<!-- Sheets sync modal -->
+<div class="modal-overlay" id="sheets-sync-overlay" style="display:none" onclick="if(event.target===this)closeSheetsSyncModal()">
+  <div class="modal" style="max-width:460px;padding:1.75rem">
+    <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:4px">Sync Sales Data</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:16px">Update the numbers from your Google Sheet. Calls = total rows, Won = won rows.</div>
+    <div id="sheets-sync-tiers" style="display:flex;flex-direction:column;gap:14px"></div>
+    <div style="display:flex;gap:10px;margin-top:18px">
+      <button class="cancel-btn" onclick="closeSheetsSyncModal()">Cancel</button>
+      <button class="save-btn" onclick="saveSheetsSyncData()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- Sheets URL edit modal -->
 <div class="modal-overlay" id="sheets-url-overlay" style="display:none" onclick="if(event.target===this)closeSheetsUrlModal()">
   <div class="modal" style="max-width:420px;padding:1.75rem">

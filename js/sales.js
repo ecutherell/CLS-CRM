@@ -114,7 +114,10 @@ function renderSheetsMetrics() {
   document.getElementById('sheets-metrics-content').innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
       <h3 style="margin:0;font-size:14px;font-weight:600;color:var(--text)">Sheets: All-Time Performance</h3>
-      <div style="font-size:11px;color:var(--text3)">Synced ${syncDate}</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="font-size:11px;color:var(--text3)">Synced ${syncDate}</div>
+        <button class="action-btn" style="font-size:11px;padding:4px 10px;border-radius:6px" onclick="openSheetsSyncModal()">↻ Sync</button>
+      </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
       <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
@@ -196,6 +199,51 @@ function salesThisMonth() {
     const d = new Date(e.date + 'T12:00:00');
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   });
+}
+
+function openSheetsSyncModal() {
+  const data = sGet(SHEETS_DATA_KEY, SHEETS_DEFAULT_DATA);
+  const container = document.getElementById('sheets-sync-tiers');
+  if (!container) return;
+  container.innerHTML = (data.sheets || []).map((s, i) => `
+    <div style="background:var(--surface2);border-radius:8px;padding:12px 14px">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px">${s.name}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Total Calls</div>
+          <input type="number" class="log-input" id="sync-calls-${i}" value="${s.calls}" min="0" style="width:100%;box-sizing:border-box"/>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Won</div>
+          <input type="number" class="log-input" id="sync-won-${i}" value="${s.won}" min="0" style="width:100%;box-sizing:border-box"/>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Lost</div>
+          <input type="number" class="log-input" id="sync-lost-${i}" value="${s.lost}" min="0" style="width:100%;box-sizing:border-box"/>
+        </div>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('sheets-sync-overlay').style.display = 'flex';
+}
+
+function closeSheetsSyncModal() {
+  document.getElementById('sheets-sync-overlay').style.display = 'none';
+}
+
+async function saveSheetsSyncData() {
+  const data = sGet(SHEETS_DATA_KEY, SHEETS_DEFAULT_DATA);
+  const updated = { ...data, lastSync: new Date().toISOString().slice(0, 10) };
+  updated.sheets = (data.sheets || []).map((s, i) => {
+    const calls = parseInt(document.getElementById('sync-calls-' + i)?.value) || 0;
+    const won   = parseInt(document.getElementById('sync-won-'   + i)?.value) || 0;
+    const lost  = parseInt(document.getElementById('sync-lost-'  + i)?.value) || 0;
+    const pct   = calls > 0 ? Math.round(won / calls * 100) : 0;
+    return { ...s, calls, won, lost, pct };
+  });
+  await sSet(SHEETS_DATA_KEY, updated);
+  closeSheetsSyncModal();
+  renderSheetsMetrics();
 }
 
 function renderSalesPage() {
