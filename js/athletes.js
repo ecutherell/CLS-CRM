@@ -31,6 +31,8 @@ async function addAthlete(name, program, start) {
 }
 
 async function updateAthlete(id, fields) {
+  const a0 = athletes.find(x => String(x.id) === String(id));
+  if (a0) logAthleteEdit(a0.name, fields);
   athletes = athletes.map(a => String(a.id) === String(id) ? { ...a, ...fields } : a);
   renderAll();
   if (sb) {
@@ -41,6 +43,37 @@ async function updateAthlete(id, fields) {
 
 function quickUpdateDue(id, date) {
   updateAthlete(id, { due_date: date || null });
+}
+
+// Tracks recent athlete edits so accidental changes can be traced back
+const EDIT_LOG_KEY = 'athlete_edit_log';
+function logAthleteEdit(name, fields) {
+  const log = sGet(EDIT_LOG_KEY, []);
+  const fieldNames = Object.keys(fields).join(', ');
+  const entry = {
+    name,
+    fields: fieldNames,
+    time: new Date().toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }),
+  };
+  const updated = [entry, ...log].slice(0, 50); // keep last 50 edits
+  sSet(EDIT_LOG_KEY, updated);
+}
+
+function renderEditLog() {
+  const wrap = document.getElementById('edit-log-list');
+  if (!wrap) return;
+  const log = sGet(EDIT_LOG_KEY, []);
+  if (!log.length) {
+    wrap.innerHTML = '<div style="font-size:12px;color:var(--text3)">No edits logged yet.</div>';
+    return;
+  }
+  wrap.innerHTML = log.map(e =>
+    '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">' +
+      '<div><span style="font-size:13px;font-weight:600;color:var(--text1)">' + e.name + '</span>' +
+      '<span style="font-size:12px;color:var(--text3)"> — ' + e.fields + '</span></div>' +
+      '<span style="font-size:11px;color:var(--text3);white-space:nowrap;margin-left:10px">' + e.time + '</span>' +
+    '</div>'
+  ).join('');
 }
 
 async function quickChurn(id) {
@@ -120,6 +153,7 @@ function renderTable() {
   if (activeFilter === 'active') list = list.filter(a => a.is_active);
   else if (activeFilter === 'overdue') list = list.filter(a => getStatus(a) === 'overdue');
   else if (activeFilter === 'due') list = list.filter(a => getStatus(a) === 'due');
+  else if (activeFilter === 'due_next') list = list.filter(a => getStatus(a) === 'due_next');
   else if (activeFilter === 'meet') list = list.filter(a => a.is_active && nextMeet(a));
   else if (activeFilter === 'churned') list = list.filter(a => !a.is_active);
   list = [...list].sort((a, b) => {
@@ -148,7 +182,6 @@ function renderTable() {
           : '<span class="no-meet">No meet</span>')
         : '<span class="no-meet">—</span>') + '</td>' +
       '<td>' + pillHTML(status) + '</td>' +
-      '<td onclick="event.stopPropagation()" style="white-space:nowrap">' + prBlockDots(a.id) + '</td>' +
       '<td onclick="event.stopPropagation()">' + (a.is_active ? '<button class="action-btn churn-btn" onclick="quickChurn(\'' + a.id + '\')" title="Mark as churned">✕</button>' : '') + '</td></tr>';
   });
   if (addOpen) {

@@ -47,6 +47,9 @@ function getStatus(a) {
     if (dl && dl < TODAY) return 'overdue';
     return 'due';
   }
+  const weekAfter = new Date(nextMonday);
+  weekAfter.setDate(weekAfter.getDate() + 7);
+  if (dueWeek < weekAfter) return 'due_next';
   return 'ok';
 }
 

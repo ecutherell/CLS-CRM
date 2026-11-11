@@ -55,9 +55,13 @@ function renderStripeStats() {
   const activeAlert = unaccounted > 0
     ? '<div style="font-size:11px;color:var(--amber-text,#b45309);font-weight:600;margin-top:4px">⚠ ' + unaccounted + ' client' + (unaccounted > 1 ? 's' : '') + ' not in Stripe</div>'
     : '';
+  const overCount = accounted - total;
+  const overAlert = overCount > 0
+    ? '<div style="font-size:11px;color:var(--red-text,#e53935);font-weight:600;margin-top:4px">⚠ ' + overCount + ' more payment' + (overCount > 1 ? 's' : '') + ' than active clients (' + accounted + ' vs ' + total + ') — possible duplicate subscription</div>'
+    : '';
 
   statsEl.innerHTML =
-    '<div class="stat"><div class="stat-label">Active</div><div class="stat-val green">' + c.activeCount + sub() + '</div>' + activeAlert + '</div>' +
+    '<div class="stat"><div class="stat-label">Active</div><div class="stat-val green">' + c.activeCount + sub() + '</div>' + activeAlert + overAlert + '</div>' +
     '<div class="stat"><div class="stat-label">Paused</div><div class="stat-val amber">' + displayPaused + sub() + manualNote(manualPaused, manualPausedNames) + '</div></div>' +
     '<div class="stat"><div class="stat-label">Past due / unpaid</div><div class="stat-val red">' + displayPastDue + sub() + manualNote(manualOverdue, manualOverdueNames) + '</div></div>' +
     (c.missing > 0 ? '<div class="stat"><div class="stat-label">Missing in Stripe</div><div class="stat-val amber">' + c.missing + '</div></div>' : '');
@@ -168,6 +172,42 @@ function renderRecentPayments(payments) {
         '<div style="font-size:15px;font-weight:700;color:' + amountColor + '">' + (failed ? '-' : '') + '$' + p.amount.toFixed(2) + '</div>' +
       '</div>';
     }).join('');
+}
+
+function fmtBillingCadence(interval, count) {
+  if (!interval) return null;
+  const n = count || 1;
+  if (interval === 'week') return n === 1 ? 'every week' : 'every ' + n + ' weeks';
+  if (interval === 'month') {
+    if (n === 1) return 'every month';
+    if (n === 3) return 'every 3 months';
+    if (n === 6) return 'every 6 months';
+    return 'every ' + n + ' months';
+  }
+  if (interval === 'year') return n === 1 ? 'every year' : 'every ' + n + ' years';
+  return interval;
+}
+
+function advanceToNextDate(dateStr, interval, count) {
+  if (!dateStr || !interval) return dateStr;
+  const n = count || 1;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let d = new Date(dateStr + 'T12:00:00');
+  // Advance by intervals until the date is in the future
+  let safety = 0;
+  while (d <= today && safety++ < 60) {
+    if (interval === 'week') {
+      d.setDate(d.getDate() + n * 7);
+    } else if (interval === 'month') {
+      d.setMonth(d.getMonth() + n);
+    } else if (interval === 'year') {
+      d.setFullYear(d.getFullYear() + n);
+    } else {
+      break;
+    }
+  }
+  return d.toISOString().slice(0, 10);
 }
 
 function daysSince(dateStr) {
@@ -385,10 +425,13 @@ function renderStripeTable() {
       statusCell = '<span class="pill pill-green" style="font-size:12px">active</span>';
     }
 
+    const cadence = fmtBillingCadence(c.billingInterval, c.billingIntervalCount);
+    const cadenceText = cadence ? '<div style="font-size:11px;color:var(--text3);margin-top:2px">' + cadence + '</div>' : '';
     const lastPmt = c.lastPaymentDate
       ? fmtDay(c.lastPaymentDate) + (c.lastPaymentAmount ? ' · $' + c.lastPaymentAmount.toFixed(0) : '')
       : '—';
-    const nextPmt = c.nextPaymentDate ? fmtDay(c.nextPaymentDate) : '—';
+    const advancedNext = advanceToNextDate(c.nextPaymentDate, c.billingInterval, c.billingIntervalCount);
+    const nextPmt = advancedNext ? fmtDay(advancedNext) : '—';
 
     let crmCell = '';
     if (linked) {
@@ -408,7 +451,7 @@ function renderStripeTable() {
     return '<tr style="' + rowBg + '">' +
       '<td style="font-size:15px;font-weight:' + (isPastDue ? '600' : '500') + '">' + (c.name || '—') + '<div style="font-size:12px;color:var(--text3);font-weight:400;margin-top:2px">' + (c.email || '') + '</div></td>' +
       '<td>' + crmCell + '</td>' +
-      '<td style="font-size:14px;color:var(--text2)">' + lastPmt + '</td>' +
+      '<td style="font-size:14px;color:var(--text2)">' + lastPmt + cadenceText + '</td>' +
       '<td style="font-size:14px;color:var(--text2)">' + nextPmt + '</td>' +
       '<td>' + statusCell + '</td>' +
       '</tr>';
@@ -476,7 +519,15 @@ function renderStripeTable() {
 
   const pausedCustomers = stripeCustomers.filter(c => c.subscriptionStatus === 'paused');
 
-  const activeCustomers = stripeCustomers.filter(c => c.subscriptionStatus === 'active');
+  const activeCustomers = stripeCustomers.filter(c => c.subscriptionStatus === 'active')
+    .sort((a, b) => {
+      const da = advanceToNextDate(a.nextPaymentDate, a.billingInterval, a.billingIntervalCount);
+      const db = advanceToNextDate(b.nextPaymentDate, b.billingInterval, b.billingIntervalCount);
+      if (!da && !db) return 0;
+      if (!da) return 1;
+      if (!db) return -1;
+      return da.localeCompare(db);
+    });
 
   // Sort key for paused/manual: unpause date or next payment date (no date = null)
   const FAR = '9999-12-31';

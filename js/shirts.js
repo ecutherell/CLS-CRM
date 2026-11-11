@@ -1,5 +1,23 @@
 const SHIRT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
 let inventoryLocked = true;
+let _shirtOrderTimer = null;
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function debounceShirtOrder() {
+  clearTimeout(_shirtOrderTimer);
+  _shirtOrderTimer = setTimeout(saveShirtOrderNotes, 600);
+}
+
+function saveShirtOrderNotes() {
+  const ta = document.getElementById('shirt-order-textarea');
+  if (!ta) return;
+  sSet('shirt_order_notes', ta.value);
+  const lbl = document.getElementById('shirt-order-saved');
+  if (lbl) { lbl.textContent = 'Saved'; setTimeout(() => { if (lbl) lbl.textContent = ''; }, 1500); }
+}
 
 function toggleInventoryLock() {
   inventoryLocked = !inventoryLocked;
@@ -81,17 +99,22 @@ function renderShirts() {
       '</div></div>'
     ).join('');
 
-  // Order list
+  // Order list — free-form editable notes
   const orderEl = document.getElementById('shirts-orders');
-  orderEl.innerHTML = onOrder.length
-    ? onOrder.map(a =>
-        '<div class="shirt-row">' +
-        '<div class="name-wrap" style="flex:1"><div class="avatar" style="' + avStyle(a.id) + '">' + ini(a.name) + '</div>' +
-        '<div><div class="athlete-name">' + a.name + '</div>' +
-        '<div style="font-size:12px;color:var(--text2);margin-top:2px">' + a.shirt_note + '</div></div></div>' +
-        '</div>'
-      ).join('')
-    : '<div class="dash-empty">No orders noted yet. Add a shirt note in an athlete\'s profile.</div>';
+  const orderNotes = sGet('shirt_order_notes', '');
+  orderEl.innerHTML =
+    '<textarea id="shirt-order-textarea" placeholder="Type your order notes here…" ' +
+    'style="width:100%;min-height:120px;padding:10px;border-radius:var(--radius-sm);border:1px solid var(--border2);' +
+    'background:var(--surface2);color:var(--text);font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box">' +
+    escapeHtml(orderNotes) + '</textarea>' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-top:6px">' +
+    '<button onclick="saveShirtOrderNotes()" style="padding:5px 14px;border-radius:var(--radius-sm);border:none;background:var(--accent);color:#fff;font-size:12px;cursor:pointer">Save</button>' +
+    '<span style="font-size:11px;color:var(--text3)" id="shirt-order-saved"></span>' +
+    '</div>';
+  const ta = document.getElementById('shirt-order-textarea');
+  if (ta) {
+    ta.addEventListener('input', debounceShirtOrder);
+  }
 
   // To ship out
   const toShipMap = getToShipMap();

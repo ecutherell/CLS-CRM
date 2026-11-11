@@ -185,6 +185,36 @@ function renderMeetPage() {
   }).join('') + '</div>';
 }
 
+let _mdSelectedIds = new Set();
+
+function renderMdAthletes() {
+  const q = (document.getElementById('md-athletes-search')?.value || '').toLowerCase().trim();
+  const active = athletes.filter(a => a.is_active && (!q || a.name.toLowerCase().includes(q))).sort((a, b) => {
+    const aIn = _mdSelectedIds.has(String(a.id));
+    const bIn = _mdSelectedIds.has(String(b.id));
+    if (aIn !== bIn) return aIn ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+  const countEl = document.getElementById('md-athletes-count');
+  if (countEl) countEl.textContent = _mdSelectedIds.size + ' athlete' + (_mdSelectedIds.size !== 1 ? 's' : '');
+  document.getElementById('md-athletes').innerHTML = active.map(a => {
+    const inMeet = _mdSelectedIds.has(String(a.id));
+    return '<div onclick="toggleMdAthlete(\'' + a.id + '\')" style="display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:6px;cursor:pointer;' +
+      (inMeet ? 'background:rgba(76,175,80,0.1)' : 'background:transparent') + '">' +
+      '<div class="mini-avatar" style="' + avStyle(a.id) + ';flex-shrink:0">' + ini(a.name) + '</div>' +
+      '<span style="font-size:14px;font-weight:500;color:' + (inMeet ? 'var(--text)' : 'var(--text3)') + ';flex:1">' + a.name + '</span>' +
+      '<span style="font-size:16px">' + (inMeet ? '✓' : '+') + '</span>' +
+      '</div>';
+  }).join('');
+}
+
+function toggleMdAthlete(id) {
+  const sid = String(id);
+  if (_mdSelectedIds.has(sid)) _mdSelectedIds.delete(sid);
+  else _mdSelectedIds.add(sid);
+  renderMdAthletes();
+}
+
 function openMeetDetail(encodedKey) {
   const key = decodeURIComponent(encodedKey);
   const m = meetMap[key];
@@ -195,9 +225,10 @@ function openMeetDetail(encodedKey) {
   document.getElementById('md-location').value = m.location || (existing ? existing.city : '');
   document.getElementById('md-notes').value = m.notes || '';
   document.getElementById('md-handling').checked = !!existing;
-  document.getElementById('md-athletes').innerHTML = m.aths.map(a =>
-    '<div class="meet-ath-chip"><div class="mini-avatar" style="' + avStyle(a.id) + '">' + ini(a.name) + '</div>' + a.name + '</div>'
-  ).join('');
+  _mdSelectedIds = new Set(m.aths.map(a => String(a.id)));
+  const srch = document.getElementById('md-athletes-search');
+  if (srch) srch.value = '';
+  renderMdAthletes();
   document.getElementById('md-key').value = encodedKey;
   document.getElementById('meet-detail-modal').classList.add('open');
 }
@@ -214,14 +245,42 @@ async function saveMeetDetail() {
   const notes = document.getElementById('md-notes').value.trim();
   const handling = document.getElementById('md-handling').checked;
 
-  // Save location + notes to each athlete's meet entry
-  for (const a of m.aths) {
+  const origIds = new Set(m.aths.map(a => String(a.id)));
+  const newIds  = new Set(_mdSelectedIds);
+  const addedIds   = [...newIds].filter(id => !origIds.has(id));
+  const removedIds = [...origIds].filter(id => !newIds.has(id));
+  const keptIds    = [...origIds].filter(id => newIds.has(id));
+
+  // Update location + notes on athletes still in the meet
+  for (const id of keptIds) {
+    const a = athletes.find(x => String(x.id) === id);
+    if (!a) continue;
     const meets = (a.meets || []).map(mm =>
       mm.name === m.name && mm.date === m.date ? { ...mm, location, notes } : mm
     );
-    athletes = athletes.map(x => x.id === a.id ? { ...x, meets } : x);
+    athletes = athletes.map(x => String(x.id) === id ? { ...x, meets } : x);
     if (sb) await sb.from('athletes').update({ meets }).eq('id', a.id);
   }
+
+  // Add meet to newly added athletes
+  for (const id of addedIds) {
+    const a = athletes.find(x => String(x.id) === id);
+    if (!a) continue;
+    const newMeet = { name: m.name, date: m.date, time: m.time || '', location, notes };
+    const meets = [...(a.meets || []), newMeet];
+    athletes = athletes.map(x => String(x.id) === id ? { ...x, meets } : x);
+    if (sb) await sb.from('athletes').update({ meets }).eq('id', a.id);
+  }
+
+  // Remove meet from removed athletes
+  for (const id of removedIds) {
+    const a = athletes.find(x => String(x.id) === id);
+    if (!a) continue;
+    const meets = (a.meets || []).filter(mm => !(mm.name === m.name && mm.date === m.date));
+    athletes = athletes.map(x => String(x.id) === id ? { ...x, meets } : x);
+    if (sb) await sb.from('athletes').update({ meets }).eq('id', a.id);
+  }
+
   meetMap[key].location = location;
   meetMap[key].notes = notes;
 

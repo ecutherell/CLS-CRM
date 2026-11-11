@@ -178,6 +178,25 @@ function renderBizMetrics() {
   // Active Clients
   document.getElementById('bm-active').textContent = athletes.filter(a => a.is_active).length;
 
+  // Clients at start of each month (last 12 months)
+  const monthlyEl = document.getElementById('bm-monthly-clients');
+  if (monthlyEl) {
+    const rows = [];
+    for (let i = 11; i >= 0; i--) {
+      const ms = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const prevMs = new Date(ms.getTime() - 1);
+      const count = athletes.filter(a => athleteActiveAtEndOf(a, prevMs)).length;
+      const label = MONTHS[ms.getMonth()].slice(0, 3) + " '" + String(ms.getFullYear()).slice(2);
+      rows.push({ label, count, isCurrent: i === 0 });
+    }
+    monthlyEl.innerHTML = rows.map(r =>
+      '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border1)">' +
+      '<span style="font-size:13px;color:' + (r.isCurrent ? 'var(--text)' : 'var(--text2)') + '">' + r.label + '</span>' +
+      '<span style="font-size:14px;font-weight:600;color:' + (r.isCurrent ? 'var(--accent)' : 'var(--text)') + '">' + r.count + '</span>' +
+      '</div>'
+    ).join('');
+  }
+
   // Annual Churn %
   const apct = calcAnnualChurn();
   const annualEl = document.getElementById('bm-annual-churn');
