@@ -29,6 +29,7 @@ const PRECACHE = [
   'js/davidcall.js',
   'js/officepurchase.js',
   'js/meetweekend.js',
+  'js/whatsapp.js',
   'js/birthdays.js',
   'icons/icon-192.png',
   'icons/icon-512.png',

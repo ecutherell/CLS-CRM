@@ -55,10 +55,8 @@
     <button id="nav-payments" class="nav-item" onclick="goTo('payments',this)"><span class="nav-icon">💳</span>Payments<span class="nav-badge amber" id="badge-payments" style="display:none"></span></button>
     <div class="nav-label">Coaching</div>
     <button class="nav-item" onclick="goTo('athletes',this)"><span class="nav-icon">🏋️</span>Athletes</button>
-    <button id="nav-prcharts" class="nav-item" onclick="goTo('prcharts',this);renderPrCharts()"><span class="nav-icon">📈</span>PR Charts</button>
     <button id="nav-davidcall" class="nav-item" onclick="goTo('davidcall',this);renderDavidCall()"><span class="nav-icon">📞</span>David Call</button>
     <button id="nav-meets" class="nav-item" onclick="goTo('meets',this)"><span class="nav-icon">🗓️</span>Meets<span class="nav-badge blue" id="badge-meets" style="display:none"></span></button>
-    <button id="nav-mymeets" class="nav-item" onclick="goTo('mymeets',this)"><span class="nav-icon">🗓️</span>Meets I'm handling<span class="nav-badge blue" id="badge-mymeets" style="display:none"></span></button>
     <div class="nav-label">Content</div>
     <button id="nav-youtube" class="nav-item" onclick="goTo('youtube',this);renderYoutubePage()"><span class="nav-icon">▶️</span>YouTube Videos</button>
     <button id="nav-podcast" class="nav-item" onclick="goTo('podcast',this);renderPodcastPage()"><span class="nav-icon">🎙️</span>Podcast</button>
@@ -69,11 +67,9 @@
     <button id="nav-bizmetrics" class="nav-item" onclick="goTo('bizmetrics',this)"><span class="nav-icon">📈</span>Business Metrics</button>
     <div class="nav-label">Other</div>
     <button id="nav-shirts" class="nav-item" onclick="goTo('shirts',this)"><span class="nav-icon">👕</span>Shirts<span class="nav-badge amber" id="badge-shirts" style="display:none"></span></button>
+    <button id="nav-whatsapp" class="nav-item" onclick="goTo('whatsapp',this);renderWhatsapp()"><span class="nav-icon">💬</span>WhatsApp</button>
     <button id="nav-testimonials" class="nav-item" onclick="goTo('testimonials',this)"><span class="nav-icon">🎥</span>Testimonials</button>
-    <button id="nav-format" class="nav-item" onclick="goTo('format',this);renderFormatPage()"><span class="nav-icon">📋</span>Format fixes<span class="nav-badge amber" id="badge-format" style="display:none"></span></button>
-    <button id="nav-birthdays" class="nav-item" onclick="goTo('birthdays',this)"><span class="nav-icon">🎂</span>Birthdays<span class="nav-badge" id="badge-birthdays" style="display:none"></span></button>
     <button id="nav-calendar" class="nav-item" onclick="goTo('calendar',this);initCalendarPage()"><span class="nav-icon">📅</span>Calendar</button>
-    <button id="nav-officepurchase" class="nav-item" onclick="goTo('officepurchase',this);renderOfficePage()"><span class="nav-icon">🛒</span>Monthly Office Purchase</button>
     <button id="nav-meetweekend" class="nav-item" onclick="goTo('meetweekend',this);renderMeetWeekendPage()"><span class="nav-icon">🏋️</span>Meet Weekend</button>
   </div>
   <div class="sidebar-footer">
@@ -109,45 +105,8 @@
         </div>
       </div>
       <div class="dash-card"><div class="dash-card-title">🏆 Upcoming meets</div><div id="dash-meets"><div class="loading">Loading…</div></div></div>
-      <div class="dash-card" id="dash-low-contact-wrap" style="display:none;flex-direction:column">
-        <div class="dash-card-title" style="color:#5c9cf5">💬 Text this week</div>
-        <div class="no-scrollbar" style="overflow-y:auto;max-height:340px;flex:1"><div id="dash-low-contact"></div></div>
-      </div>
       <div class="dash-card"><div class="dash-card-title">📊 Sales this month</div><div id="dash-sales"><div class="loading">Loading…</div></div></div>
-      <div class="dash-card" style="display:flex;flex-direction:column">
-        <div class="dash-card-title">📞 Plan a call</div>
-        <div id="dash-calls" style="flex:1;overflow-y:auto;max-height:280px"></div>
-        <div class="calls-add-form">
-          <select id="call-athlete-sel" style="flex:1;min-width:120px;font-size:12px;padding:5px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2)">
-            <option value="">— pick athlete —</option>
-          </select>
-          <input type="date" id="call-date" style="font-size:12px;padding:5px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2)"/>
-          <button onclick="addPlannedCall()" style="padding:5px 12px;border-radius:6px;border:none;background:var(--accent);color:#fff;font-size:12px;cursor:pointer;white-space:nowrap">Add</button>
-        </div>
-      </div>
     </div>
-  </div>
-  <!-- PR Charts -->
-  <div class="page" id="page-prcharts">
-    <div class="page-title">PR Tracker</div>
-    <div class="page-sub">Block-by-block PR status across your full roster.</div>
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:20px">
-      <button class="filter-btn active" onclick="setPrRosterFilter('all',this)">All</button>
-      <button class="filter-btn" onclick="setPrRosterFilter('streak',this)">🔥 On a streak</button>
-      <button class="filter-btn" onclick="setPrRosterFilter('attention',this)">⚠️ Needs attention</button>
-      <button class="filter-btn" onclick="setPrRosterFilter('nologs',this)">No history</button>
-      <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
-        <span style="font-size:12px;color:var(--text3)">Sort:</span>
-        <select id="prchart-sort" onchange="renderPrCharts()" style="font-size:12px;padding:5px 8px;border:1px solid var(--border2);border-radius:7px;background:var(--surface2);color:var(--text);font-family:inherit">
-          <option value="name">Name</option>
-          <option value="pct">PR% (high→low)</option>
-          <option value="streak">Streak</option>
-          <option value="attention">Needs attention first</option>
-          <option value="recent">Most recent block</option>
-        </select>
-      </div>
-    </div>
-    <div id="prchart-roster" style="max-width:900px"></div>
   </div>
   <!-- Athletes -->
   <div class="page" id="page-athletes">
@@ -157,6 +116,7 @@
       <div class="filters">
         <button class="filter-btn active" onclick="setFilter('active',this)">Active</button>
         <button class="filter-btn" onclick="setFilter('due',this)">Due this week</button>
+        <button class="filter-btn" onclick="setFilter('due_next',this)">Due next week</button>
         <button class="filter-btn" onclick="setFilter('overdue',this)">Overdue</button>
         <button class="filter-btn" onclick="setFilter('meet',this)">Has meet</button>
         <button class="filter-btn" onclick="setFilter('churned',this)">Churned</button>
@@ -173,7 +133,6 @@
           <th onclick="sortBy('due_date')" id="th-due-date">Program due <span class="sort-icon" id="sort-due_date"></span></th>
           <th onclick="sortBy('meet')">Next meet <span class="sort-icon" id="sort-meet"></span></th>
           <th onclick="sortBy('status')">Status <span class="sort-icon" id="sort-status"></span></th>
-          <th style="white-space:nowrap">PR blocks</th>
           <th></th>
         </tr></thead>
         <tbody id="athlete-body"><tr><td colspan="6" class="loading">Loading...</td></tr></tbody>
@@ -188,39 +147,6 @@
     <div id="meet-week-out-wrap" style="display:none;border-radius:10px;padding:14px 16px;margin-bottom:16px"></div>
     <div id="meet-ask-wrap" style="display:none;background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.25);border-radius:10px;padding:14px 16px;margin-bottom:20px"></div>
     <div id="meet-grid-wrap"></div>
-  </div>
-  <!-- My Meets -->
-  <div class="page" id="page-mymeets">
-    <div class="page-title">Meets I'm handling at</div>
-    <div class="page-sub">Meets you're handling at — upcoming and past.</div>
-    <div class="mm-stats" id="mm-stats"></div>
-    <div class="mymeets-layout">
-      <div class="mymeets-card">
-        <h3>Upcoming</h3>
-        <div class="mm-list" id="mm-upcoming"></div>
-        <div class="mm-add-form" id="mm-add-form">
-          <div><div style="font-size:11px;color:var(--text2);margin-bottom:4px">Meet name</div><input type="text" id="mm-name" placeholder="e.g. USAPL Texas State Championships"/></div>
-          <div class="mm-form-row">
-            <div><div style="font-size:11px;color:var(--text2);margin-bottom:4px">Date</div><input type="date" id="mm-date"/></div>
-            <div><div style="font-size:11px;color:var(--text2);margin-bottom:4px">Time (optional)</div><input type="time" id="mm-time"/></div>
-          </div>
-          <div class="mm-form-row">
-            <div><div style="font-size:11px;color:var(--text2);margin-bottom:4px">City</div><input type="text" id="mm-city" placeholder="e.g. Austin, TX"/></div>
-            <div><div style="font-size:11px;color:var(--text2);margin-bottom:4px">Your home city</div><input type="text" id="mm-home" placeholder="e.g. Houston, TX"/></div>
-          </div>
-          <div style="display:flex;gap:8px">
-            <button class="save-btn" onclick="addMyMeet()">Add meet</button>
-            <button class="cancel-btn" onclick="toggleMMForm(false)">Cancel</button>
-          </div>
-        </div>
-        <button class="cancel-btn" id="mm-add-btn" style="font-size:12px;margin-top:10px" onclick="toggleMMForm(true)">+ Add meet</button>
-      </div>
-      <div class="mymeets-card">
-        <h3>Handled ✓</h3>
-        <div class="mm-list" id="mm-past"></div>
-        <div style="font-size:12px;color:var(--text3);margin-top:10px">Meets auto-move here once the date passes.</div>
-      </div>
-    </div>
   </div>
   <!-- Sales -->
   <div class="page" id="page-sales">
@@ -394,18 +320,29 @@
     <div class="page-title">Testimonials</div>
     <div class="page-sub">Track which athletes have recorded a testimonial video.</div>
     <div class="stats" id="testimonials-stats"></div>
-    <div class="shirts-layout testimonials-3col">
+    <div class="shirts-layout" style="grid-template-columns:1fr">
       <div class="shirts-card">
-        <h3>Done</h3>
-        <div id="testimonials-done"></div>
+        <h3>Roster</h3>
+        <div id="testimonials-roster"></div>
+      </div>
+    </div>
+  </div>
+  <!-- WhatsApp -->
+  <div class="page" id="page-whatsapp">
+    <div class="page-title">WhatsApp</div>
+    <div class="page-sub">Track which athletes have moved over to WhatsApp.</div>
+    <div class="stats" id="wa-stats"></div>
+    <div style="height:6px;background:var(--border2);border-radius:3px;margin:0 0 1.5rem;overflow:hidden">
+      <div id="wa-progress-bar" style="height:100%;width:0%;border-radius:3px;transition:width 0.3s"></div>
+    </div>
+    <div class="shirts-layout">
+      <div class="shirts-card">
+        <h3>Roster</h3>
+        <div id="wa-roster"></div>
       </div>
       <div class="shirts-card">
-        <h3>Not yet</h3>
-        <div id="testimonials-pending"></div>
-      </div>
-      <div class="shirts-card">
-        <h3>Out of state</h3>
-        <div id="testimonials-oos"></div>
+        <h3>Notes</h3>
+        <div id="wa-notes"></div>
       </div>
     </div>
   </div>
@@ -418,6 +355,10 @@
         <div class="dash-card-title">👥 Active Clients</div>
         <div id="bm-active" style="font-size:38px;font-weight:700;color:var(--text);margin:8px 0 4px">—</div>
         <div style="font-size:12px;color:var(--text3)">Paying clients right now</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-card-title">📆 Clients at Start of Month</div>
+        <div id="bm-monthly-clients" style="margin-top:8px"></div>
       </div>
       <div class="dash-card">
         <div class="dash-card-title">📉 Monthly Churn % <span class="info-tip" data-tipid="monthly" style="cursor:help">ⓘ</span></div>
@@ -521,28 +462,11 @@
       </div>
     </div>
   </div>
-  <!-- Birthdays -->
-  <div class="page" id="page-birthdays">
-    <div class="page-title">Birthdays</div>
-    <div class="page-sub">Track athlete birthdays and keep your phone calendar up to date.</div>
-    <div class="stats" id="bday-stats"></div>
-    <div class="dash-card" style="margin-top:0">
-      <div id="bday-list"><div class="loading">Loading…</div></div>
-    </div>
-  </div>
   <!-- Meet Weekend -->
   <div class="page" id="page-meetweekend">
     <div class="page-title">Meet Weekend</div>
     <div class="page-sub">Track who you've messaged about taking the weekend off. Start a new meet each time.</div>
     <div style="max-width:680px;margin-top:8px" id="meetwknd-body">
-      <div class="dash-empty">Loading…</div>
-    </div>
-  </div>
-  <!-- Monthly Office Purchase -->
-  <div class="page" id="page-officepurchase">
-    <div class="page-title">Monthly Office Purchase</div>
-    <div class="page-sub">Plan one thing to get for the office each month — May through December.</div>
-    <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;max-width:700px" id="office-months-list">
       <div class="dash-empty">Loading…</div>
     </div>
   </div>
@@ -564,20 +488,6 @@
         <div id="davidcall-history"><div class="dash-empty">No past calls yet.</div></div>
       </div>
     </div>
-  </div>
-  <!-- Format fixes -->
-  <div class="page" id="page-format">
-    <div class="page-title">Format fixes</div>
-    <div class="page-sub">Mark athletes whose program format needs updating. Check them off as you go.</div>
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:1.25rem">
-      <button class="btn-primary" style="font-size:12px;padding:6px 14px" onclick="formatSelectAll()">Flag all</button>
-      <button class="cancel-btn" style="font-size:12px;padding:6px 14px" onclick="formatClearAll()">Clear all done</button>
-      <span id="format-count" style="font-size:13px;color:var(--text3)"></span>
-    </div>
-    <div class="table-wrap"><table>
-      <thead><tr><th style="width:32px"></th><th>Athlete</th><th>Program</th><th>Status</th></tr></thead>
-      <tbody id="format-body"></tbody>
-    </table></div>
   </div>
   <!-- Calendar -->
   <div class="page" id="page-calendar">
@@ -605,8 +515,12 @@
       <textarea class="modal-input" id="md-notes" placeholder="Weight classes, attempts, travel info..." style="min-height:70px;resize:vertical"></textarea>
     </div>
     <div class="modal-section">
-      <div class="modal-label">Athletes at this meet</div>
-      <div id="md-athletes" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div class="modal-label" style="margin-bottom:0">Athletes at this meet</div>
+        <span id="md-athletes-count" style="font-size:11px;color:var(--text3)"></span>
+      </div>
+      <input id="md-athletes-search" type="text" placeholder="Search athletes…" oninput="renderMdAthletes()" style="width:100%;box-sizing:border-box;padding:6px 10px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:13px;margin-bottom:6px;outline:none"/>
+      <div id="md-athletes" style="display:flex;flex-direction:column;gap:4px;max-height:200px;overflow-y:auto;border:1px solid var(--border2);border-radius:var(--radius-sm);padding:4px"></div>
     </div>
     <div class="modal-section">
       <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer;color:var(--text)">
@@ -679,8 +593,7 @@
       <button onclick="document.getElementById('nav-section').style.display=document.getElementById('nav-section').style.display==='none'?'block':'none'" style="width:100%;text-align:left;padding:10px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;font-weight:500;color:var(--text);cursor:pointer;margin-bottom:4px">🧭 Sidebar items</button>
       <div id="nav-section" style="display:none;padding:10px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);margin-bottom:4px">
         <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-bottom:8px">Coaching</div>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin-bottom:6px;cursor:pointer"><input type="checkbox" id="snav-meets" onchange="saveNavPrefs()" style="accent-color:var(--accent)"/> Meets</label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin-bottom:12px;cursor:pointer"><input type="checkbox" id="snav-mymeets" onchange="saveNavPrefs()" style="accent-color:var(--accent)"/> Meets I'm handling</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin-bottom:12px;cursor:pointer"><input type="checkbox" id="snav-meets" onchange="saveNavPrefs()" style="accent-color:var(--accent)"/> Meets</label>
         <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-bottom:8px">Business</div>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin-bottom:6px;cursor:pointer"><input type="checkbox" id="snav-sales" onchange="saveNavPrefs()" style="accent-color:var(--accent)"/> Sales</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin-bottom:6px;cursor:pointer"><input type="checkbox" id="snav-payments" onchange="saveNavPrefs()" style="accent-color:var(--accent)"/> Payments</label>
@@ -691,9 +604,15 @@
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin-bottom:6px;cursor:pointer"><input type="checkbox" id="snav-podcast" onchange="saveNavPrefs()" style="accent-color:var(--accent)"/> Podcast</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin-bottom:6px;cursor:pointer"><input type="checkbox" id="snav-shortform" onchange="saveNavPrefs()" style="accent-color:var(--accent)"/> Short Form</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin-bottom:6px;cursor:pointer"><input type="checkbox" id="snav-shirts" onchange="saveNavPrefs()" style="accent-color:var(--accent)"/> Shirts</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin-bottom:6px;cursor:pointer"><input type="checkbox" id="snav-whatsapp" onchange="saveNavPrefs()" style="accent-color:var(--accent)"/> WhatsApp</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin-bottom:6px;cursor:pointer"><input type="checkbox" id="snav-testimonials" onchange="saveNavPrefs()" style="accent-color:var(--accent)"/> Testimonials</label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin-bottom:6px;cursor:pointer"><input type="checkbox" id="snav-birthdays" onchange="saveNavPrefs()" style="accent-color:var(--accent)"/> Birthdays</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer"><input type="checkbox" id="snav-calendar" onchange="saveNavPrefs()" style="accent-color:var(--accent)"/> Calendar</label>
+      </div>
+    </div>
+    <div style="margin-top:12px">
+      <button onclick="document.getElementById('editlog-section').style.display=document.getElementById('editlog-section').style.display==='none'?'block':'none';renderEditLog()" style="width:100%;text-align:left;padding:10px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;font-weight:500;color:var(--text);cursor:pointer;margin-bottom:4px">🕓 Last updated (recent athlete edits)</button>
+      <div id="editlog-section" style="display:none;padding:12px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);margin-bottom:4px;max-height:260px;overflow-y:auto">
+        <div id="edit-log-list" style="font-size:13px"></div>
       </div>
     </div>
     <div style="margin-top:12px">
@@ -848,15 +767,29 @@
   </div>
 </div>
 
-<!-- Text confirm modal -->
-<div class="modal-overlay" id="text-confirm-overlay" style="display:none" onclick="if(event.target===this)cancelTextCheck()">
+
+<!-- Check meets confirm modal -->
+<div class="modal-overlay" id="check-meets-overlay" style="display:none" onclick="if(event.target===this)cancelCheckMeets()">
   <div class="modal" style="max-width:320px;text-align:center;padding:2rem 1.75rem">
-    <div style="font-size:28px;margin-bottom:10px" id="text-confirm-icon">💬</div>
-    <div id="text-confirm-msg" style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:6px"></div>
-    <div id="text-confirm-sub" style="font-size:13px;color:var(--text3);margin-bottom:24px"></div>
+    <div style="font-size:28px;margin-bottom:10px">📋</div>
+    <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:6px">Double checked everyone's meets?</div>
+    <div style="font-size:13px;color:var(--text3);margin-bottom:24px">Mark this week's meet check as done.</div>
     <div style="display:flex;gap:10px;justify-content:center">
-      <button class="cancel-btn" style="min-width:90px" onclick="cancelTextCheck()">Cancel</button>
-      <button class="save-btn" style="min-width:90px" id="text-confirm-btn" onclick="confirmTextCheck()">Confirm</button>
+      <button class="cancel-btn" style="min-width:90px" onclick="cancelCheckMeets()">Cancel</button>
+      <button class="save-btn" style="min-width:90px" onclick="confirmCheckMeets()">Yes, done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Check prep confirm modal -->
+<div class="modal-overlay" id="check-prep-overlay" style="display:none" onclick="if(event.target===this)cancelWeeklyTask('check-prep-overlay')">
+  <div class="modal" style="max-width:320px;text-align:center;padding:2rem 1.75rem">
+    <div style="font-size:28px;margin-bottom:10px">✅</div>
+    <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:6px">Everyone's prep is planned?</div>
+    <div style="font-size:13px;color:var(--text3);margin-bottom:24px">Mark this week's prep check as done.</div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="cancel-btn" style="min-width:90px" onclick="cancelWeeklyTask('check-prep-overlay')">Cancel</button>
+      <button class="save-btn" style="min-width:90px" onclick="confirmWeeklyTask('check_prep','check-prep-overlay')">Yes, done</button>
     </div>
   </div>
 </div>
@@ -1037,7 +970,6 @@
         <div class="modal-label" style="margin-bottom:0">PR History</div>
         <div style="display:flex;gap:8px">
           <button class="cancel-btn" style="font-size:12px" onclick="closeModal();openPrModal(modalId)">+ Log block</button>
-          <button class="cancel-btn" style="font-size:12px" onclick="goTo('prcharts',document.getElementById('nav-prcharts'));document.getElementById('prchart-athlete-sel').value=modalId;renderPrCharts();closeModal()">Full history ↗</button>
         </div>
       </div>
       <div id="modal-pr-mini"></div>
@@ -1059,21 +991,18 @@
 <script src="js/payments.js?v=2"></script>
 <script src="js/stripe.js?v=2"></script>
 <script src="js/calls.js?v=2"></script>
-<script src="js/meets.js?v=2"></script>
 <script src="js/mymeets.js?v=2"></script>
+<script src="js/meets.js?v=2"></script>
 <script src="js/churn.js?v=2"></script>
 <script src="js/shirts.js?v=3"></script>
+<script src="js/whatsapp.js?v=1"></script>
 <script src="js/testimonials.js?v=2"></script>
-<script src="js/birthdays.js?v=2"></script>
 <script src="js/dashboard.js?v=3"></script>
 <script src="js/bizmetrics.js?v=2"></script>
 <script src="js/prlog.js?v=2"></script>
-<script src="js/prcharts.js?v=2"></script>
 <script src="js/content.js?v=2"></script>
 <script src="js/davidcall.js?v=1"></script>
-<script src="js/officepurchase.js?v=1"></script>
 <script src="js/meetweekend.js?v=1"></script>
-<script src="js/format.js?v=2"></script>
 <script src="js/calendar.js?v=2"></script>
 <script src="js/app.js?v=4"></script>
 </body>

@@ -1,3 +1,15 @@
+async function toggleMeetFlagFromDash(athleteId, meetNameEnc, meetDate, field) {
+  const meetName = decodeURIComponent(meetNameEnc);
+  const a = athletes.find(x => String(x.id) === String(athleteId));
+  if (!a) return;
+  const meets = (a.meets || []).map(m =>
+    m.name === meetName && m.date === meetDate ? { ...m, [field]: !m[field] } : m
+  );
+  athletes = athletes.map(x => String(x.id) === String(athleteId) ? { ...x, meets } : x);
+  if (sb) await sb.from('athletes').update({ meets }).eq('id', athleteId);
+  renderDashboard();
+}
+
 function pickDate(currentVal, onChange, e) {
   const inp = document.getElementById('global-date-picker');
   inp.value = currentVal || '';
@@ -17,58 +29,41 @@ function confirmUpdateDue(id, newDate) {
   renderDashboard();
 }
 
-function getTextedKey() {
-  return 'texted_' + getThisMonday().toISOString().slice(0, 10);
+function getWeeklyTaskKey(task) {
+  return task + '_' + getThisMonday().toISOString().slice(0, 10);
 }
 
-function getTextedSet() {
-  return new Set(sGet(getTextedKey(), []));
+function weeklyTaskDone(task) {
+  return sGet(getWeeklyTaskKey(task), false);
 }
 
-let _pendingTextId = null;
-
-function promptTextCheck(id, name, markingDone) {
-  _pendingTextId = id;
-  document.getElementById('text-confirm-icon').textContent = markingDone ? '✅' : '↩️';
-  document.getElementById('text-confirm-msg').textContent = markingDone ? 'Mark as texted?' : 'Unmark ' + name + '?';
-  document.getElementById('text-confirm-sub').textContent = markingDone
-    ? 'Log that you reached out to ' + name + ' this week.'
-    : 'Move ' + name + ' back to your to-do list.';
-  document.getElementById('text-confirm-btn').textContent = markingDone ? 'Yes, mark done' : 'Yes, unmark';
-  document.getElementById('text-confirm-overlay').style.display = 'flex';
+function markWeeklyTask(task, overlayId) {
+  if (weeklyTaskDone(task)) {
+    sSet(getWeeklyTaskKey(task), false);
+    renderDashboard();
+    return;
+  }
+  const overlay = document.getElementById(overlayId);
+  if (overlay) overlay.style.display = 'flex';
 }
 
-function confirmTextCheck() {
-  if (!_pendingTextId) return;
-  const set = getTextedSet();
-  const id = String(_pendingTextId);
-  if (set.has(id)) set.delete(id); else set.add(id);
-  sSet(getTextedKey(), [...set]);
-  _pendingTextId = null;
-  document.getElementById('text-confirm-overlay').style.display = 'none';
-  renderTextChecks(athletes.filter(a => a.is_active && a.low_contact).sort((a, b) => a.name.localeCompare(b.name)));
+function confirmWeeklyTask(task, overlayId) {
+  sSet(getWeeklyTaskKey(task), true);
+  const overlay = document.getElementById(overlayId);
+  if (overlay) overlay.style.display = 'none';
+  renderDashboard();
 }
 
-function cancelTextCheck() {
-  _pendingTextId = null;
-  document.getElementById('text-confirm-overlay').style.display = 'none';
+function cancelWeeklyTask(overlayId) {
+  const overlay = document.getElementById(overlayId);
+  if (overlay) overlay.style.display = 'none';
 }
 
-function renderTextChecks(lc) {
-  const texted = getTextedSet();
-  const done = lc.filter(a => texted.has(String(a.id))).length;
-  const titleEl = document.querySelector('#dash-low-contact-wrap .dash-card-title');
-  if (titleEl) titleEl.innerHTML = '💬 Text this week <span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:6px">' + done + '/' + lc.length + '</span>';
-  document.getElementById('dash-low-contact').innerHTML = lc.map(a => {
-    const done = texted.has(String(a.id));
-    return '<div class="dash-row" style="gap:10px">' +
-      '<label style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:1">' +
-      '<input type="checkbox" ' + (done ? 'checked' : '') + ' onclick="event.preventDefault();promptTextCheck(\'' + a.id + '\',\'' + a.name.replace(/'/g, "\\'") + '\',' + (!done) + ')" style="width:15px;height:15px;cursor:pointer;accent-color:#5c9cf5;flex-shrink:0"/>' +
-      '<div style="' + (done ? 'opacity:0.4;text-decoration:line-through' : '') + '"><div class="dash-row-name">' + a.name + '</div>' +
-      '<div class="dash-row-meta">' + (a.program ? (a.program.startsWith('http') ? '<a href="' + a.program + '" target="_blank" onclick="event.stopPropagation()" style="color:var(--blue-text);font-size:12px">Open sheet ↗</a>' : a.program) : '—') + '</div></div>' +
-      '</label></div>';
-  }).join('');
-}
+// Legacy aliases kept for existing HTML
+function checkMeetsDone()    { return weeklyTaskDone('check_meets'); }
+function markCheckMeetsDone() { markWeeklyTask('check_meets', 'check-meets-overlay'); }
+function confirmCheckMeets() { confirmWeeklyTask('check_meets', 'check-meets-overlay'); }
+function cancelCheckMeets()  { cancelWeeklyTask('check-meets-overlay'); }
 
 function calcAnnualChurn() {
   const now = new Date();
@@ -186,7 +181,37 @@ function renderDashboard() {
     return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
   });
   const dwAll = [...odSorted, ...dw];
-  document.getElementById('dash-due').innerHTML = dwAll.length
+  function weeklyRow(label, task, overlayId) {
+    const done = weeklyTaskDone(task);
+    return '<div class="dash-row" style="' + (done ? 'opacity:0.5' : 'background:rgba(100,181,246,0.07);border-radius:8px') + ';padding:8px 10px;gap:10px">' +
+      '<div style="flex:1"><div class="dash-row-name" style="' + (done ? 'text-decoration:line-through;color:var(--text3)' : 'color:var(--blue-text)') + '">' + label + '</div></div>' +
+      '<button onclick="markWeeklyTask(\'' + task + '\',\'' + overlayId + '\')" style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;' +
+      (done
+        ? 'background:rgba(76,175,80,0.15);color:var(--green-text);border:1px solid var(--green-text)'
+        : 'background:var(--surface2);color:var(--text3);border:1px dashed var(--border2)') + '">' +
+      (done ? '✓ Done' : '+ Mark done') + '</button>' +
+      '</div>';
+  }
+  // Dynamic: ask for attempts rows for anyone with a meet in the next 7 days
+  const attemptsRows = active.flatMap(a =>
+    (a.meets || [])
+      .filter(m => { const d = daysDiff(m.date); return d >= 0 && d <= 7 && !m.attempts_asked; })
+      .map(m => {
+        const d = daysDiff(m.date);
+        const when = d === 0 ? 'today' : d === 1 ? 'tomorrow' : 'in ' + d + 'd';
+        return '<div class="dash-row" style="background:rgba(255,112,67,0.07);border-radius:8px;padding:8px 10px;gap:10px">' +
+          '<div style="flex:1"><div class="dash-row-name" style="color:#ff7043">Ask ' + a.name + ' for attempts</div>' +
+          '<div class="dash-row-meta">' + m.name + ' · ' + when + '</div></div>' +
+          '<button onclick="toggleMeetFlagFromDash(\'' + a.id + '\',\'' + encodeURIComponent(m.name) + '\',\'' + m.date + '\',\'attempts_asked\')" ' +
+          'style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;background:var(--surface2);color:var(--text3);border:1px dashed var(--border2)">+ Mark done</button>' +
+          '</div>';
+      })
+  );
+
+  const checkRow = weeklyRow("Double check everyone's meets", 'check_meets', 'check-meets-overlay') +
+                   weeklyRow("Double check that everyone's prep is planned", 'check_prep', 'check-prep-overlay') +
+                   attemptsRows.join('');
+  document.getElementById('dash-due').innerHTML = checkRow + (dwAll.length
     ? dwAll.map(a => {
         const isOd = getStatus(a) === 'overdue';
         return '<div class="dash-row"><div><div class="dash-row-name">' + a.name + (a.priority_day ? ' <span style="color:#ffc107;font-size:10px">★</span>' : '') + ' <button onclick="event.stopPropagation();openPrModal(\'' + a.id + '\')" title="PR log" style="background:none;border:1px solid var(--border2);border-radius:4px;padding:1px 5px;font-size:10px;cursor:pointer;color:var(--text3);margin-left:4px">📊</button></div><div class="dash-row-meta">' + (a.program ? (a.program.startsWith('http') ? '<a href="' + a.program + '" target="_blank" onclick="event.stopPropagation()" style="color:var(--blue-text);font-size:12px">Open sheet ↗</a>' : a.program) : '—') + '</div></div>' +
@@ -196,7 +221,7 @@ function renderDashboard() {
             : '<span style="font-size:12px;color:var(--amber-text);font-weight:600">' + deadlineHint(a) + '</span><span style="font-size:10px;color:var(--text3)">✎</span>') +
           '</div></div>';
       }).join('')
-    : '<div class="dash-empty">Nothing due this week.</div>';
+    : '<div class="dash-empty">Nothing due this week.</div>');
 
   const lw = active.filter(a => {
     if (!a.due_date) return false;
@@ -234,11 +259,6 @@ function renderDashboard() {
     '<span style="font-size:10px;color:var(--text3)">✎</span>' +
     '</div></div>'
   ).join('');
-
-  const lc = active.filter(a => a.low_contact).sort((a, b) => a.name.localeCompare(b.name));
-  const lcWrap = document.getElementById('dash-low-contact-wrap');
-  lcWrap.style.display = lc.length ? 'flex' : 'none';
-  renderTextChecks(lc);
 
   document.getElementById('dash-sales').innerHTML = mCalls > 0
     ? '<div class="dash-row"><div class="dash-row-name">Calls this month</div><strong>' + mCalls + '</strong></div>' +

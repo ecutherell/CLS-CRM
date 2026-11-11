@@ -37,7 +37,7 @@ router.get('/customers', async (req, res) => {
     // Fetch customers and all subscriptions in parallel
     const [customers, allSubscriptions, allInvoices] = await Promise.all([
       paginate(p => stripe.customers.list({ ...p })),
-      paginate(p => stripe.subscriptions.list({ ...p, status: 'all' })),
+      paginate(p => stripe.subscriptions.list({ ...p, status: 'all', expand: ['data.latest_invoice'] })),
       paginate(p => stripe.invoices.list({ ...p, limit: 100 })),
     ]);
 
@@ -81,6 +81,20 @@ router.get('/customers', async (req, res) => {
         if (sub.current_period_end) {
           nextPaymentDate = new Date(sub.current_period_end * 1000).toISOString().slice(0, 10);
         }
+        // Fallback: derive from latest invoice created_at + interval days
+        if (!nextPaymentDate && sub.latest_invoice) {
+          const inv = typeof sub.latest_invoice === 'object' ? sub.latest_invoice : null;
+          const intervalDays = sub.items?.data?.[0]?.plan?.interval === 'month' ? 30
+            : sub.items?.data?.[0]?.plan?.interval_count
+              ? sub.items.data[0].plan.interval_count * (sub.items.data[0].plan.interval === 'week' ? 7 : 30)
+              : 28;
+          const base = inv?.created || inv?.period_end;
+          if (base) {
+            const d = new Date(base * 1000);
+            d.setDate(d.getDate() + intervalDays);
+            nextPaymentDate = d.toISOString().slice(0, 10);
+          }
+        }
         if ((sub.status === 'past_due' || sub.status === 'unpaid') && sub.current_period_start) {
           failedPaymentDate = new Date(sub.current_period_start * 1000).toISOString().slice(0, 10);
         }
@@ -102,6 +116,10 @@ router.get('/customers', async (req, res) => {
         if (failed.attempt_count) attemptCount = failed.attempt_count;
       }
 
+      const planItem = sub?.items?.data?.[0]?.plan;
+      const billingInterval = planItem?.interval || null;
+      const billingIntervalCount = planItem?.interval_count || null;
+
       return {
         id: c.id,
         name: c.name || '',
@@ -114,6 +132,8 @@ router.get('/customers', async (req, res) => {
         nextRetryDate,
         attemptCount,
         pausedResumesAt,
+        billingInterval,
+        billingIntervalCount,
       };
     });
 

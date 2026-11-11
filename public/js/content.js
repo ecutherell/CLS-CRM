@@ -1,16 +1,26 @@
 // ── YouTube Videos ────────────────────────────────────────
 
 const YT_STEPS = [
-  { key: 'script_done',    label: 'Script',     icon: '📝' },
-  { key: 'thumbnail_done', label: 'Thumbnail',  icon: '🖼️' },
-  { key: 'recorded',       label: 'Recorded',   icon: '🎥' },
-  { key: 'edited',         label: 'Edited',     icon: '✂️' },
-  { key: 'published',      label: 'Scheduled',  icon: '🚀' },
+  { key: 'title_done',          label: 'Title',           icon: '✍️' },
+  { key: 'thumbnail_idea_done', label: 'Thumb Idea',      icon: '💡' },
+  { key: 'thumbnail_done',      label: 'Thumb Made',      icon: '🖼️' },
+  { key: 'script_done',         label: 'Script',          icon: '📝' },
+  { key: 'recorded',            label: 'Recorded',        icon: '🎥' },
+  { key: 'edited',              label: 'Edited',          icon: '✂️' },
+  { key: 'published',           label: 'Published',       icon: '🚀' },
 ];
 
 let _ytAddOpen    = false;
-let _ytEditId     = null; // currently expanded edit row
-let _ytDriveEdit  = false; // editing drive link inline
+let _ytEditId     = null;
+let _ytDriveEdit  = false;
+let _ytSortKey    = 'episode';
+let _ytSortDir    = 1;
+
+function setYtSort(key) {
+  if (_ytSortKey === key) _ytSortDir = -_ytSortDir;
+  else { _ytSortKey = key; _ytSortDir = 1; }
+  renderYoutubePage();
+}
 
 function getYtVideos() { return sGet('youtube_videos', []); }
 function saveYtVideos(list) { sSet('youtube_videos', list); }
@@ -40,8 +50,10 @@ function addYtVideo() {
     title,
     thumbnail_idea: '',
     script_url: '',
-    script_done: false,
+    title_done: false,
+    thumbnail_idea_done: false,
     thumbnail_done: false,
+    script_done: false,
     recorded: false,
     edited: false,
     clipped: false,
@@ -105,7 +117,16 @@ function renderYoutubePage() {
   const wrap = document.getElementById('yt-content');
   if (!wrap) return;
 
-  const videos = getYtVideos().slice().sort((a, b) => (a.episode || 0) - (b.episode || 0));
+  const videos = getYtVideos().slice();
+  videos.sort((a, b) => {
+    if (_ytSortKey === 'episode') return _ytSortDir * ((a.episode || 0) - (b.episode || 0));
+    if (_ytSortKey === 'title') return _ytSortDir * (a.title || '').localeCompare(b.title || '');
+    if (_ytSortKey === 'date') {
+      const av = a.publish_date || 'zzz', bv = b.publish_date || 'zzz';
+      return _ytSortDir * av.localeCompare(bv);
+    }
+    return _ytSortDir * ((b[_ytSortKey] ? 1 : 0) - (a[_ytSortKey] ? 1 : 0));
+  });
 
   // ── Buffer logic ───────────────────────────────────────
   // "Ready" = clipped (fully produced) but not published yet
@@ -220,11 +241,17 @@ function renderYoutubePage() {
       'style="margin-bottom:1rem;padding:8px 18px;border-radius:8px;border:1px dashed var(--border2);background:none;color:var(--text2);font-size:13px;cursor:pointer">+ Add video</button>';
 
   // ── Table ──────────────────────────────────────────────
-  const stepHeaders = YT_STEPS.map(s =>
-    '<th style="text-align:center;padding:8px 6px;font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;overflow:hidden">' + s.label + '</th>'
-  ).join('');
+  const ytSortTh = (label, key, align) => {
+    const active = _ytSortKey === key;
+    const arrow = active ? (_ytSortDir === 1 ? ' ↑' : ' ↓') : '';
+    return '<th onclick="event.stopPropagation();setYtSort(\'' + key + '\')" style="cursor:pointer;user-select:none;text-align:' + (align||'center') + ';padding:8px 6px;font-size:11px;color:' + (active ? 'var(--text)' : 'var(--text3)') + ';font-weight:600;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap">' + label + arrow + '</th>';
+  };
+  const stepHeaders = YT_STEPS.map(s => ytSortTh(s.label, s.key, 'center')).join('');
 
-  const rows = videos.map(v => {
+  const activeVideos   = videos.filter(v => !v.published);
+  const finishedVideos = videos.filter(v => v.published);
+
+  const rows = activeVideos.map(v => {
     const doneCount = YT_STEPS.filter(s => v[s.key]).length;
     const pct = Math.round(doneCount / YT_STEPS.length * 100);
     const barColor = pct === 100 ? 'var(--green-text)' : pct >= 50 ? '#ffc107' : pct > 0 ? '#ff7043' : 'var(--border2)';
@@ -239,13 +266,24 @@ function renderYoutubePage() {
         (done ? '✓' : '') + '</button></td>';
     }).join('');
 
+    const txtStyle = 'background:transparent;border:none;color:var(--text);font-size:14px;font-weight:500;width:100%;cursor:text;padding:0;outline:none;font-family:inherit';
+    const txtFocus = 'background:var(--surface2);border:1px solid var(--border2);border-radius:4px;padding:2px 6px;color:var(--text);font-size:14px;font-weight:500;width:calc(100% - 12px);outline:none;font-family:inherit';
     const mainRow = '<tr style="border-bottom:1px solid var(--border2);cursor:pointer" onclick="toggleYtEdit(\'' + v.id + '\')">' +
       '<td style="padding:10px 8px;font-size:13px;color:var(--text3);text-align:center;width:40px">' + (v.episode || '—') + '</td>' +
-      '<td style="padding:10px 12px;min-width:180px">' +
-        '<div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:5px">' + _esc(v.title) + '</div>' +
-        '<div style="height:3px;background:var(--border2);border-radius:2px;width:80px">' +
+      '<td style="padding:10px 12px;min-width:160px">' +
+        '<input type="text" value="' + _esc(v.title) + '" ' +
+        'onclick="event.stopPropagation()" ' +
+        'onchange="saveYtField(\'' + v.id + '\',\'title\',this.value)" ' +
+        'onkeydown="if(event.key===\'Enter\')this.blur()" ' +
+        'style="' + txtStyle + '" ' +
+        'onfocus="this.style.cssText=\'' + txtFocus + '\'" ' +
+        'onblur="this.style.cssText=\'' + txtStyle + '\'"/>' +
+        '<div style="height:3px;background:var(--border2);border-radius:2px;width:80px;margin-top:5px">' +
           '<div data-ytbar="' + v.id + '" style="height:100%;width:' + pct + '%;background:' + barColor + ';border-radius:2px"></div>' +
         '</div>' +
+      '</td>' +
+      '<td style="padding:10px 8px;font-size:12px;color:var(--text3);text-align:center;white-space:nowrap;min-width:68px">' +
+        (v.publish_date ? new Date(v.publish_date + 'T12:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '—') +
       '</td>' +
       stepCells +
       '<td style="padding:8px;text-align:center;width:32px">' +
@@ -278,17 +316,36 @@ function renderYoutubePage() {
           '</div></div>'
         : inp('Script URL', 'script_url', '', 'url', '1');
 
-      editRow = '<tr style="background:var(--surface2)">' +
-        '<td colspan="' + (YT_STEPS.length + 3) + '" style="padding:12px 16px">' +
-        '<div class="edit-panel-grid-3" style="margin-bottom:10px">' +
-        inp('Episode #', 'episode', v.episode, 'number', 'none') +
-        inp('Title', 'title', v.title, 'text', 'none') +
-        inp('Thumbnail Idea', 'thumbnail_idea', v.thumbnail_idea, 'text', 'none') +
+      editRow = '<tr style="background:var(--surface2);border-bottom:1px solid var(--border2)">' +
+        '<td colspan="' + (YT_STEPS.length + 3) + '" style="padding:14px 16px">' +
+        // Row 1: Ep, Title, Thumbnail Idea
+        '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">' +
+        '<div style="flex:0 0 70px">' + inp('Ep #', 'episode', v.episode, 'number') + '</div>' +
+        '<div style="flex:2;min-width:160px">' + inp('Title', 'title', v.title) + '</div>' +
+        '<div style="flex:2;min-width:160px">' + inp('Thumbnail Idea', 'thumbnail_idea', v.thumbnail_idea) + '</div>' +
         '</div>' +
-        '<div class="edit-panel-grid-3">' +
-        scriptField +
-        inp('Publish Date', 'publish_date', v.publish_date, 'date', 'none') +
-        inp('Notes', 'notes', v.notes, 'text', 'none') +
+        // Row 2: Script, Publish Date, Notes
+        '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">' +
+        '<div style="flex:0 0 auto">' +
+          '<div style="' + labelStyle + ';margin-bottom:4px">Script</div>' +
+          (v.script_url
+            ? '<div style="display:flex;gap:6px;align-items:center">' +
+              '<a href="' + _esc(v.script_url) + '" target="_blank" ' +
+              'style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:6px;background:#5c9cf5;color:#fff;font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap">📄 Open script ↗</a>' +
+              '<button onclick="event.stopPropagation();saveYtField(\'' + v.id + '\',\'script_url\',\'\')" title="Remove link" ' +
+              'style="padding:6px 10px;border-radius:6px;border:1px solid var(--border2);background:none;color:var(--text3);font-size:12px;cursor:pointer">✕</button>' +
+              '</div>'
+            : '<input type="url" placeholder="Paste script URL…" ' +
+              'onchange="saveYtField(\'' + v.id + '\',\'script_url\',this.value)" ' +
+              'style="' + inputStyle + ';min-width:180px"/>') +
+        '</div>' +
+        '<div style="flex:1;min-width:130px">' + inp('Publish Date', 'publish_date', v.publish_date, 'date') + '</div>' +
+        '<div style="flex:2;min-width:160px">' + inp('Notes', 'notes', v.notes) + '</div>' +
+        '</div>' +
+        // Finish button
+        '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border2);display:flex;justify-content:flex-end">' +
+        '<button onclick="event.stopPropagation();saveYtField(\'' + v.id + '\',\'published\',true)" ' +
+        'style="padding:7px 18px;border-radius:6px;border:none;background:rgba(76,175,80,0.15);border:1px solid rgba(76,175,80,0.4);color:#4caf50;font-size:13px;font-weight:600;cursor:pointer">✅ Mark as finished → move to bottom</button>' +
         '</div>' +
         '</td></tr>';
     }
@@ -296,26 +353,61 @@ function renderYoutubePage() {
     return mainRow + editRow;
   }).join('');
 
-  const total = videos.length;
   const TH = 'font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;padding:8px 6px;';
   const stepColWidth = 72;
-  const tableHtml = total
-    ? '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="width:100%;min-width:420px;border-collapse:collapse;font-size:13px;table-layout:fixed">' +
-      '<colgroup>' +
-      '<col style="width:44px"/>' +
-      '<col/>' +
-      YT_STEPS.map(() => '<col style="width:' + stepColWidth + 'px"/>').join('') +
-      '<col style="width:36px"/>' +
-      '</colgroup>' +
-      '<thead><tr style="border-bottom:2px solid var(--border2)">' +
-      '<th style="' + TH + 'text-align:center">Ep</th>' +
-      '<th style="' + TH + 'text-align:left;padding-left:12px">Title</th>' +
-      stepHeaders +
-      '<th></th>' +
-      '</tr></thead><tbody>' + rows + '</tbody></table></div>'
-    : '<div style="text-align:center;color:var(--text3);font-size:13px;padding:40px 0">No videos yet — add your first one above.</div>';
 
-  wrap.innerHTML = statusHtml + pipelineHtml + addHtml + tableHtml;
+  function buildTable(rowsHtml, empty) {
+    return rowsHtml
+      ? '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="width:100%;min-width:420px;border-collapse:collapse;font-size:13px;table-layout:fixed">' +
+        '<colgroup><col style="width:44px"/><col/><col style="width:76px"/>' +
+        YT_STEPS.map(() => '<col style="width:' + stepColWidth + 'px"/>').join('') +
+        '<col style="width:36px"/></colgroup>' +
+        '<thead><tr style="border-bottom:2px solid var(--border2)">' +
+        ytSortTh('Ep', 'episode', 'center') +
+        ytSortTh('Title', 'title', 'left') +
+        ytSortTh('Date', 'date', 'center') +
+        stepHeaders + '<th></th>' +
+        '</tr></thead><tbody>' + rowsHtml + '</tbody></table></div>'
+      : '<div style="text-align:center;color:var(--text3);font-size:13px;padding:40px 0">' + empty + '</div>';
+  }
+
+  const tableHtml = buildTable(rows, 'No videos yet — add your first one above.');
+
+  // Finished videos section
+  const finishedRows = finishedVideos.map(v => {
+    const stepCells = YT_STEPS.map(s => {
+      const done = !!v[s.key];
+      return '<td style="text-align:center;padding:8px 4px">' +
+        '<button onclick="event.stopPropagation();toggleYtStep(\'' + v.id + '\',\'' + s.key + '\')" ' +
+        'style="width:26px;height:26px;border-radius:50%;border:2px solid ' + (done ? 'var(--green-text)' : 'var(--border2)') + ';' +
+        'background:' + (done ? 'rgba(76,175,80,0.18)' : 'transparent') + ';cursor:pointer;font-size:13px;' +
+        'display:inline-flex;align-items:center;justify-content:center;color:var(--green-text)">' +
+        (done ? '✓' : '') + '</button></td>';
+    }).join('');
+    return '<tr style="border-bottom:1px solid var(--border2);cursor:pointer;opacity:0.6" onclick="toggleYtEdit(\'' + v.id + '\')">' +
+      '<td style="padding:10px 8px;font-size:13px;color:var(--text3);text-align:center">' + (v.episode || '—') + '</td>' +
+      '<td style="padding:10px 12px">' +
+        '<div style="font-size:14px;font-weight:500;color:var(--text2)">' + _esc(v.title) + '</div>' +
+      '</td>' +
+      '<td style="padding:10px 8px;font-size:12px;color:var(--text3);text-align:center;white-space:nowrap">' +
+        (v.publish_date ? new Date(v.publish_date + 'T12:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '—') +
+      '</td>' +
+      stepCells +
+      '<td style="padding:8px;text-align:center">' +
+        '<button onclick="event.stopPropagation();saveYtField(\'' + v.id + '\',\'published\',false)" title="Move back to active" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:2px 6px">✕</button>' +
+      '</td></tr>';
+  }).join('');
+
+  const finishedHtml = finishedVideos.length
+    ? '<div style="margin-top:28px">' +
+      '<button onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\'" ' +
+      'style="width:100%;text-align:left;padding:10px 14px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;margin-bottom:6px">' +
+      '✅ Finished videos (' + finishedVideos.length + ')</button>' +
+      '<div style="display:none">' + buildTable(finishedRows, '') + '</div>' +
+      '</div>'
+    : '';
+
+  wrap.innerHTML = statusHtml + pipelineHtml + addHtml + tableHtml + finishedHtml;
 
   if (_ytAddOpen) {
     const inp = document.getElementById('yt-new-title');
@@ -423,6 +515,14 @@ const POD_STEPS = [
 let _podAddOpen  = false;
 let _podEditId   = null;
 let _podDriveEdit = false;
+let _podSortKey  = 'episode';
+let _podSortDir  = 1;
+
+function setPodSort(key) {
+  if (_podSortKey === key) _podSortDir = -_podSortDir;
+  else { _podSortKey = key; _podSortDir = 1; }
+  renderPodcastPage();
+}
 
 function getPodEpisodes() { return sGet('podcast_episodes', []); }
 function savePodEpisodes(list) { sSet('podcast_episodes', list); }
@@ -514,7 +614,16 @@ function renderPodcastPage() {
   const wrap = document.getElementById('pod-content');
   if (!wrap) return;
 
-  const episodes = getPodEpisodes().slice().sort((a, b) => (a.episode || 0) - (b.episode || 0));
+  const episodes = getPodEpisodes().slice();
+  episodes.sort((a, b) => {
+    if (_podSortKey === 'episode') return _podSortDir * ((a.episode || 0) - (b.episode || 0));
+    if (_podSortKey === 'title') return _podSortDir * (a.title || '').localeCompare(b.title || '');
+    if (_podSortKey === 'date') {
+      const av = a.publish_date || 'zzz', bv = b.publish_date || 'zzz';
+      return _podSortDir * av.localeCompare(bv);
+    }
+    return _podSortDir * ((b[_podSortKey] ? 1 : 0) - (a[_podSortKey] ? 1 : 0));
+  });
 
   const published    = episodes.filter(e => e.published);
   const ready        = episodes.filter(e => !e.published && e.edited);
@@ -618,9 +727,12 @@ function renderPodcastPage() {
     : '<button onclick="_podAddOpen=true;renderPodcastPage()" ' +
       'style="margin-bottom:1rem;padding:8px 18px;border-radius:8px;border:1px dashed var(--border2);background:none;color:var(--text2);font-size:13px;cursor:pointer">+ Add episode</button>';
 
-  const stepHeaders = POD_STEPS.map(s =>
-    '<th style="text-align:center;padding:8px 6px;font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap">' + s.label + '</th>'
-  ).join('');
+  const podSortTh = (label, key, align) => {
+    const active = _podSortKey === key;
+    const arrow = active ? (_podSortDir === 1 ? ' ↑' : ' ↓') : '';
+    return '<th onclick="event.stopPropagation();setPodSort(\'' + key + '\')" style="cursor:pointer;user-select:none;text-align:' + (align||'center') + ';padding:8px 6px;font-size:11px;color:' + (active ? 'var(--text)' : 'var(--text3)') + ';font-weight:600;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap">' + label + arrow + '</th>';
+  };
+  const stepHeaders = POD_STEPS.map(s => podSortTh(s.label, s.key, 'center')).join('');
 
   const total = episodes.length;
   const stepColWidth = 84;
@@ -641,15 +753,25 @@ function renderPodcastPage() {
         (done ? '✓' : '') + '</button></td>';
     }).join('');
 
+    const pTxt = 'background:transparent;border:none;color:var(--text);font-size:14px;font-weight:500;width:100%;cursor:text;padding:0;outline:none;font-family:inherit';
+    const pFocus = 'background:var(--surface2);border:1px solid var(--border2);border-radius:4px;padding:2px 6px;color:var(--text);font-size:14px;font-weight:500;width:calc(100% - 12px);outline:none;font-family:inherit';
     const mainRow = '<tr style="border-bottom:1px solid var(--border2);cursor:pointer" onclick="togglePodEdit(\'' + ep.id + '\')">' +
       '<td style="padding:10px 8px;font-size:13px;color:var(--text3);text-align:center;width:40px">' + (ep.episode || '—') + '</td>' +
-      '<td style="padding:10px 12px;min-width:180px">' +
-        '<div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:5px">' + _esc(ep.title) +
-          (ep.guest ? '<span style="margin-left:8px;font-size:11px;color:var(--text3);font-weight:400">w/ ' + _esc(ep.guest) + '</span>' : '') +
-        '</div>' +
-        '<div style="height:3px;background:var(--border2);border-radius:2px;width:80px">' +
+      '<td style="padding:10px 12px;min-width:160px">' +
+        '<input type="text" value="' + _esc(ep.title) + '" ' +
+        'onclick="event.stopPropagation()" ' +
+        'onchange="savePodField(\'' + ep.id + '\',\'title\',this.value)" ' +
+        'onkeydown="if(event.key===\'Enter\')this.blur()" ' +
+        'style="' + pTxt + '" ' +
+        'onfocus="this.style.cssText=\'' + pFocus + '\'" ' +
+        'onblur="this.style.cssText=\'' + pTxt + '\'"/>' +
+        (ep.guest ? '<div style="font-size:11px;color:var(--text3);margin-top:2px">w/ ' + _esc(ep.guest) + '</div>' : '') +
+        '<div style="height:3px;background:var(--border2);border-radius:2px;width:80px;margin-top:4px">' +
           '<div data-podbar="' + ep.id + '" style="height:100%;width:' + pct + '%;background:' + barColor + ';border-radius:2px"></div>' +
         '</div>' +
+      '</td>' +
+      '<td style="padding:10px 8px;font-size:12px;color:var(--text3);text-align:center;white-space:nowrap;min-width:68px">' +
+        (ep.publish_date ? new Date(ep.publish_date + 'T12:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '—') +
       '</td>' +
       stepCells +
       '<td style="padding:8px;text-align:center;width:32px">' +
@@ -705,12 +827,14 @@ function renderPodcastPage() {
       '<colgroup>' +
       '<col style="width:44px"/>' +
       '<col/>' +
+      '<col style="width:76px"/>' +
       POD_STEPS.map(() => '<col style="width:' + stepColWidth + 'px"/>').join('') +
       '<col style="width:36px"/>' +
       '</colgroup>' +
       '<thead><tr style="border-bottom:2px solid var(--border2)">' +
-      '<th style="' + TH + 'text-align:center">Ep</th>' +
-      '<th style="' + TH + 'text-align:left;padding-left:12px">Title</th>' +
+      podSortTh('Ep', 'episode', 'center') +
+      podSortTh('Title', 'title', 'left') +
+      podSortTh('Date', 'date', 'center') +
       stepHeaders +
       '<th></th>' +
       '</tr></thead><tbody>' + rows + '</tbody></table></div>'

@@ -19,30 +19,22 @@ function updateBadges() {
   const bc = document.getElementById('badge-churn');
   bc.style.display = 'none';
 
-  updateBirthdayBadge();
-
-  const upcoming = myMeets.filter(m => !mmIsPast(m.date)).length;
-  const bmm = document.getElementById('badge-mymeets');
-  bmm.textContent = upcoming;
-  bmm.style.display = upcoming ? '' : 'none';
 }
 
 function renderAll() {
   updateBadges();
-  updateFormatBadge();
   renderDashboard();
   renderTable();
   renderMeetPage();
   renderChurnPage();
   renderSalesPage();
-  renderMyMeets();
   renderContentPage();
   renderShirts();
   renderTestimonials();
+  renderWhatsapp();
   renderPayments();
   renderBizMetrics();
   renderPlannedCalls();
-  renderBirthdaysPage();
 }
 
 function goTo(page, btn) {
@@ -61,7 +53,7 @@ function toggleSidebar() {
   document.getElementById('backdrop').classList.toggle('open');
 }
 
-const NAV_ITEMS = ['meets','mymeets','youtube','podcast','shortform','sales','payments','churn','bizmetrics','shirts','testimonials','birthdays','calendar'];
+const NAV_ITEMS = ['meets','youtube','podcast','shortform','sales','payments','churn','bizmetrics','shirts','whatsapp','testimonials','calendar'];
 
 function loadNavPrefs() {
   const prefs = sGet('nav_prefs', {});
@@ -360,7 +352,7 @@ async function fetchWeather() {
 // ── Data loading ───────────────────────────────────────────
 async function loadAllData() {
   await loadServerStorage();
-  await Promise.all([loadAthletes(), loadSalesLog(), loadMyMeets(), loadHotLeads(), loadPrLogs()]);
+  await Promise.all([loadAthletes(), loadSalesLog(), loadHotLeads(), loadPrLogs(), loadMyMeets()]);
   renderAll();
   await loadStripeCachedData();
 }
@@ -393,7 +385,7 @@ document.getElementById('log-date').value = TODAY.toISOString().slice(0, 10);
     localStorage.setItem('sb_key', key);
     initSB(url, key);
   } else {
-    await Promise.all([loadSalesLog(), loadMyMeets()]);
+    await Promise.all([loadSalesLog()]);
     renderAll();
     setTimeout(openSetup, 600);
   }
