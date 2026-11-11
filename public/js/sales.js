@@ -116,7 +116,7 @@ function renderSheetsMetrics() {
       <h3 style="margin:0;font-size:14px;font-weight:600;color:var(--text)">Sheets: All-Time Performance</h3>
       <div style="display:flex;align-items:center;gap:10px">
         <div style="font-size:11px;color:var(--text3)">Synced ${syncDate}</div>
-        <button class="action-btn" style="font-size:11px;padding:4px 10px;border-radius:6px" onclick="openSheetsSyncModal()">↻ Sync</button>
+        <button class="action-btn" style="font-size:11px;padding:4px 10px;border-radius:6px" onclick="syncSheetsFromServer()">↻ Sync</button>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
@@ -199,6 +199,23 @@ function salesThisMonth() {
     const d = new Date(e.date + 'T12:00:00');
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   });
+}
+
+async function syncSheetsFromServer() {
+  const btn = document.querySelector('[onclick="syncSheetsFromServer()"]');
+  if (btn) { btn.textContent = '↻ Syncing…'; btn.disabled = true; }
+  try {
+    const res = await fetch('/api/sheets/sync');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Sync failed');
+    await sSet(SHEETS_DATA_KEY, data);
+    if (data.url) await sSet(SHEETS_URL_KEY, data.url);
+    renderSheetsMetrics();
+  } catch (err) {
+    alert('Sync failed: ' + err.message);
+  } finally {
+    if (btn) { btn.textContent = '↻ Sync'; btn.disabled = false; }
+  }
 }
 
 function openSheetsSyncModal() {

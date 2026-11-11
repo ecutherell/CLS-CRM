@@ -9,6 +9,7 @@ import calendarRouter from './server/routes/calendar.js';
 import remindersRouter from './server/routes/reminders.js';
 import stripeRouter from './server/routes/stripe.js';
 import smsRouter, { sendDailySms } from './server/routes/sms.js';
+import sheetsRouter from './server/routes/sheets.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -75,6 +76,7 @@ app.post('/api/git-push', (req, res) => {
 });
 
 app.use('/api/stripe', stripeRouter);
+app.use('/api/sheets', sheetsRouter);
 app.use('/api/calendar', calendarRouter); // legacy path kept
 app.use('/api/gcal', calendarRouter);     // matches Google Console redirect URI
 app.use('/api/reminders', remindersRouter);
