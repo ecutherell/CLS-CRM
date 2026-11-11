@@ -15,6 +15,11 @@ const SHEETS_DEFAULT_DATA = {
       name: '2026 ($165)',
       calls: 17, won: 15, lost: 2, pct: 88,
       sources: { 'Local': { calls: 4, won: 3 }, 'Referral': { calls: 4, won: 4 }, 'Instagram': { calls: 3, won: 2 }, 'Instagram/Podcast': { calls: 1, won: 1 }, 'Returning': { calls: 2, won: 2 }, 'Other': { calls: 3, won: 3 } }
+    },
+    {
+      name: '2026 ($200)',
+      calls: 0, won: 0, lost: 0, pct: 0,
+      sources: {}
     }
   ]
 };
@@ -79,11 +84,14 @@ function renderSheetsMetrics() {
   const pctColor = p => p >= 50 ? 'var(--green-text)' : p >= 30 ? 'var(--amber-text)' : 'var(--red-text)';
 
   const sheetRows = data.sheets.map(s => {
-    const c = pctColor(s.pct);
+    const empty = s.calls === 0;
+    const c = empty ? 'var(--text3)' : pctColor(s.pct);
+    const pctLabel = empty ? '—' : s.pct + '%';
+    const callLabel = empty ? 'No calls yet' : s.calls + ' calls';
     return `<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--border)">
       <div style="flex:1;font-size:13px;color:var(--text2)">${s.name}</div>
-      <div style="font-size:12px;color:var(--text3)">${s.calls} calls</div>
-      <div style="font-size:13px;font-weight:700;color:${c};min-width:36px;text-align:right">${s.pct}%</div>
+      <div style="font-size:12px;color:var(--text3)">${callLabel}</div>
+      <div style="font-size:13px;font-weight:700;color:${c};min-width:36px;text-align:right">${pctLabel}</div>
     </div>`;
   }).join('');
 
@@ -191,9 +199,12 @@ function salesThisMonth() {
 }
 
 function renderSalesPage() {
-  // Seed default sheets data + URL on first load
-  if (!sGet(SHEETS_DATA_KEY, null)) sSet(SHEETS_DATA_KEY, SHEETS_DEFAULT_DATA);
-  if (!sGet(SHEETS_URL_KEY, ''))    sSet(SHEETS_URL_KEY, SHEETS_DEFAULT_DATA.url);
+  // Seed/refresh sheets data — bump version to pick up new price tiers
+  const existingData = sGet(SHEETS_DATA_KEY, null);
+  if (!existingData || existingData.lastSync !== SHEETS_DEFAULT_DATA.lastSync || (existingData.sheets || []).length < SHEETS_DEFAULT_DATA.sheets.length) {
+    sSet(SHEETS_DATA_KEY, SHEETS_DEFAULT_DATA);
+  }
+  if (!sGet(SHEETS_URL_KEY, '')) sSet(SHEETS_URL_KEY, SHEETS_DEFAULT_DATA.url);
   renderSheetsMetrics();
 
   const all = salesLog;
