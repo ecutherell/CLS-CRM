@@ -116,43 +116,8 @@ function renderShirts() {
     ta.addEventListener('input', debounceShirtOrder);
   }
 
-  // To ship out
-  const toShipMap = getToShipMap();
-  const toShip = active.filter(a => toShipMap[String(a.id)]).sort((a, b) => a.name.localeCompare(b.name));
-  const addFormHtml =
-    '<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">' +
-    '<div style="font-size:12px;color:var(--text3);margin-bottom:8px">Add athlete to ship list:</div>' +
-    '<select id="ship-select" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:13px;margin-bottom:6px">' +
-    '<option value="">— pick an athlete —</option>' +
-    active.filter(a => !toShipMap[String(a.id)]).sort((a,b) => a.name.localeCompare(b.name)).map(a =>
-      '<option value="' + a.id + '">' + a.name + '</option>'
-    ).join('') +
-    '</select>' +
-    '<select id="ship-size-select" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:13px;margin-bottom:6px">' +
-    '<option value="">— shirt size —</option>' +
-    SHIRT_SIZES.map(s => '<option value="' + s + '">' + s + '</option>').join('') +
-    '</select>' +
-    '<button onclick="addToShipList()" style="width:100%;padding:7px;border-radius:6px;border:none;background:var(--accent);color:#fff;font-size:13px;cursor:pointer">Add to ship list</button>' +
-    '</div>';
-
-  const shipCount = Object.keys(toShipMap).length;
   const badgeShirts = document.getElementById('badge-shirts');
-  if (badgeShirts) { badgeShirts.textContent = shipCount; badgeShirts.style.display = shipCount ? '' : 'none'; }
-
-  const toShipEl = document.getElementById('shirts-toship');
-  toShipEl.innerHTML = toShip.length
-    ? toShip.map(a => {
-        const entry = toShipMap[String(a.id)];
-        const size = entry && entry.size ? entry.size : null;
-        return '<div class="shirt-row" style="gap:10px">' +
-          '<div class="name-wrap" style="flex:1"><div class="avatar" style="' + avStyle(a.id) + '">' + ini(a.name) + '</div>' +
-          '<div><div class="athlete-name">' + a.name + (size ? ' <span class="pill pill-blue" style="font-size:10px;vertical-align:middle">' + size + '</span>' : '') + '</div>' +
-          '</div></div>' +
-          '<button onclick="markShirtShipped(\'' + a.id + '\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:none;background:var(--surface2);color:var(--text2);cursor:pointer;white-space:nowrap;border:1px solid var(--border2)">✓ Shipped</button>' +
-          '<button onclick="removeFromShipList(\'' + a.id + '\')" style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--border2);background:none;color:var(--text3);cursor:pointer">✕</button>' +
-          '</div>';
-      }).join('') + addFormHtml
-    : '<div class="dash-empty" style="margin-bottom:0">No shirts queued to ship.</div>' + addFormHtml;
+  if (badgeShirts) badgeShirts.style.display = 'none';
 }
 
 function getToShipMap() {
